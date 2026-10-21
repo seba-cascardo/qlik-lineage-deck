@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S04 · We weren't short of data</title>
+<!--
+  S04 · "We weren't short of data" (Task 5 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S04; the world
+  of docs/superpowers/specs/2026-10-20-world-cadastre-design.md §2-§4). A world scene on WorldStage (split maps).
+    s0  the night stage (the intro S01-S03 is night too, 2026-10-21): the headline in place, the city not there yet
+    s1  one continuous sequence (~10.75 s), then still:
+          the city emerges from the dark, unlit: its coasts, contours and texture surface from the river outward
+          (nested soft discs of the unlit map's own pixels, then the whole of it), the way the lights will spread;
+          the Apps pair lights district by district, in a wave from the river outward (Generators west,
+          Front ends east, the river left dark between them); the common port kindles and the quiet known bridges
+          grow from it to the four Auditor islands in the order Seba names them (Reloads, Sessions, Telemetry,
+          Metadata = "data models"), each island lighting as its bridge lands; the "?" kindles in the river; Data
+          connections and the containers land stay dark and get their names
+    s2  "And we have all of this three times": each environment traced across the city in turn (its territory on
+        Generators, Front ends and the land), its name staying on the land; then the on-screen line
+        "Lots of information. Few relationships."
+  End state = WorldStage "S04-end" (S05 and S06 start from it): the scene's own crops and traces are hidden there,
+  the lit map shows whole. Positions are illustrative; the counts on the labels are real (WORLD.counts, asserted
+  against foundation/truth.json by qa/test_world.py).
+  Colours only from THEME / theme.js's CSS variables (qa/lint_colors.py). No colour literal, no Math.random.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }                         /* WorldStage mounts the world here */
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* headline ink from y 54, x 96 */
+  #note { position: absolute; right: 184px; top: 1012px; }      /* footnote band, clear of the icon */
+  /* labels rise by a separate translate (a label's transform is its place on the map: never tweened) */
+  .ws-labels > .w-at, .os-line { translate: 0 var(--rise, 0px); }
+  /* no will-change anywhere (critique 2026-10-21). A layered text run is antialiased differently, and a layer
+     also pulls every text painted above it into one (the SVG under the labels did that to all of them), so each
+     switch on or off changed the sharpness of every label in one frame. Measured 2026-10-21 at 4x throttle,
+     alternating runs: layered and not layered both swung between 60 fps / p95 17 ms and ~50 fps / p95 33-50 ms
+     (other agents running), no difference beyond the noise. Without layers the end frame is the same pixels as
+     WorldStage's "S04-end" in S05 and S06. If the quiet 4x pass fails, layer only a label during its own rise:
+     it then changes sharpness once, as it lands */
+  /* the on-screen line, in the open sea right of the headline, on its own soft plate */
+  #os { position: absolute; right: 96px; top: 0; text-align: right; isolation: isolate; }
+  .os-line { font-size: 44px; line-height: 54px; white-space: nowrap;
+    text-shadow: 0 0 2px var(--stage), 0 0 5px var(--stage), 0 0 10px var(--stage); }
+  .os-line::before { content: ""; position: absolute; inset: -2px -14px; z-index: -1; border-radius: 18px;
+    background: color-mix(in srgb, var(--stage) 68%, transparent);
+    box-shadow: 0 0 18px 10px color-mix(in srgb, var(--stage) 68%, transparent); }
+  .os-line { position: relative; isolation: isolate; }
+  #os .l1 { font-weight: 400; color: var(--ink-dim); }
+  #os .l2 { font-weight: 700; color: var(--ink); }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title" id="title">We weren't short of data</h1>
+  <div id="os"><div class="os-line l1">Lots of information.</div><div class="os-line l2">Few relationships.</div></div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+gsap.registerPlugin(DrawSVGPlugin);
+const $ = (s) => document.querySelector(s);
+$("#icon").src = T.icon;
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+
+(async () => {
+  // the map is drawn once and frozen inside mount(); split: the unlit city under the lit one
+  const h = await WorldStage.mount($("#ws"), { split: true, state: "S04-end" });
+  const rect = h.rect, res = h.res, lit = h.lit, unlit = h.unlit;
+  const label = (id) => h.labels.get(id);
+
+  // ---------------------------------------------------------------- crops of the lit map
+  // A crop = the lit map's own pixels inside a mask (world units), placed exactly over the map and under it in
+  // the stack (between the unlit and the lit image). Fading crops in lights the city piece by piece; at the end
+  // the whole lit map fades in over them (same pixels where they are opaque) and they are hidden: "S04-end".
+  const NW = lit.naturalWidth, NH = lit.naturalHeight;
+  const crops = [];
+  function crop(include, o = {}) {
+    const grow = o.grow || 0, feather = o.feather || 0, pad = grow + 2 * feather + 4;
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const p of include) { const b = R.bb(p); x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }
+    const even = (v, up) => (up ? Math.ceil(v / 2) : Math.floor(v / 2)) * 2;   // the crop sits on the map's own px grid
+    const X0 = Math.max(0, even((x0 - pad - rect.x) * res)), Y0 = Math.max(0, even((y0 - pad - rect.y) * res));
+    const X1 = Math.min(NW, even((x1 + pad - rect.x) * res, true)), Y1 = Math.min(NH, even((y1 + pad - rect.y) * res, true));
+    const cv = document.createElement("canvas");
+    cv.className = "s4-crop";                            // R.freeze keeps the class on the image
+    cv.width = X1 - X0; cv.height = Y1 - Y0;
+    const g = cv.getContext("2d");
+    g.setTransform(res, 0, 0, res, -rect.x * res - X0, -rect.y * res - Y0);
+    g.fillStyle = g.strokeStyle = T.rgb(T.ink);          // the mask: any opaque token
+    g.lineJoin = "round";
+    if (feather) g.filter = `blur(${feather * res}px)`;
+    for (const p of include) { R.path(g, p); g.fill(); if (grow) { g.lineWidth = 2 * grow; g.stroke(); } }
+    g.filter = "none";
+    if (o.clip) { g.globalCompositeOperation = "destination-in"; R.path(g, o.clip); g.fill(); }
+    if (o.exclude) {
+      g.globalCompositeOperation = "destination-out"; g.lineWidth = 2 * (o.exGrow ?? 4);
+      for (const p of o.exclude) { R.path(g, p); g.fill(); g.stroke(); }
+    }
+    g.globalCompositeOperation = "source-in";
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.drawImage(lit, X0, Y0, cv.width, cv.height, 0, 0, cv.width, cv.height);
+    cv.style.cssText = `position:absolute;display:block;left:${rect.x + X0 / res}px;top:${rect.y + Y0 / res}px;width:${cv.width / res}px;height:${cv.height / res}px`;
+    h.world.insertBefore(cv, lit);
+    crops.push(cv);
+    return cv;
+  }
+
+  // in the order Seba names them ("reloads, sessions, telemetry and data models": notes.js s04[0]), so each island
+  // lights as he says it (critique 2026-10-21; the clockwise sweep reloads, metadata, sessions, telemetry was dropped)
+  const knownIds = ["reloads", "sessions", "telemetry", "metadata"];
+  const knownPolys = knownIds.map((k) => W.islands[k].poly);
+  const WAVE_AT = [875, 520];                                                // the river's middle reach
+  // ---- the city emerging from the dark (s0 -> s1): soft discs of the UNLIT map's own pixels round the river, each
+  // wider than the last, then the whole unlit map. A disc is opaque: the map's pixels with the stage laid over them
+  // by an inverse radial mask (stage outside, so its square edge is invisible on the stage). A transparent disc
+  // lost the map's colour where its alpha was below ~12/255 (premultiplied 8 bit) and drew a ring darker than the
+  // stage (measured 2026-10-21). They sit under the unlit image, each above the last, so the unlit map fades in
+  // over them and, once whole, covers them: they are hidden without a change. Edge = a smoothstep of 2*w px
+  function disc(r, w) {
+    const [cx, cy] = WAVE_AT, R1 = r + w;
+    const even = (v, up) => (up ? Math.ceil(v / 2) : Math.floor(v / 2)) * 2;
+    const X0 = Math.max(0, even((cx - R1 - 4 - rect.x) * res)), Y0 = Math.max(0, even((cy - R1 - 4 - rect.y) * res));
+    const X1 = Math.min(NW, even((cx + R1 + 4 - rect.x) * res, true)), Y1 = Math.min(NH, even((cy + R1 + 4 - rect.y) * res, true));
+    const cv = document.createElement("canvas");
+    cv.className = "s4-crop s4-disc";
+    cv.width = X1 - X0; cv.height = Y1 - Y0;
+    const g = cv.getContext("2d");
+    g.drawImage(unlit, X0, Y0, cv.width, cv.height, 0, 0, cv.width, cv.height);   // the map's own pixels, 1:1
+    g.setTransform(res, 0, 0, res, -rect.x * res - X0, -rect.y * res - Y0);
+    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, R1);
+    for (let i = 0; i <= 48; i++) {                                          // the stage at smoothstep(r - w, r + w, d)
+      const d = (i / 48) * R1, u = Math.min(1, Math.max(0, (d - (r - w)) / (2 * w)));
+      grad.addColorStop(i / 48, T.rgba(T.stage, u * u * (3 - 2 * u)));
+    }
+    g.fillStyle = grad;                                                      // beyond R1: the last stop, the stage
+    g.fillRect(rect.x + X0 / res, rect.y + Y0 / res, cv.width / res, cv.height / res);
+    cv.style.cssText = `position:absolute;display:block;left:${rect.x + X0 / res}px;top:${rect.y + Y0 / res}px;width:${cv.width / res}px;height:${cv.height / res}px`;
+    h.world.insertBefore(cv, unlit);                                         // under the unlit map, above the last disc
+    crops.push(cv);
+    return cv;
+  }
+  const discs = [disc(300, 240), disc(700, 360)];
+  // the Apps pair, district by district (a stream district = a fenced district of the island, spec §3)
+  const districts = [];
+  for (const key of ["generators", "frontends"]) {
+    const I = W.apps[key];
+    for (const s of I.streams) {
+      const c = R.centroid(s.poly);
+      districts.push({ key, cv: crop([s.poly], { clip: I.poly }), d: Math.hypot(c[0] - WAVE_AT[0], c[1] - WAVE_AT[1]) });
+    }
+  }
+  // their coasts and the light they spill on the water (the bay round the known islands stays dark)
+  const coasts = ["generators", "frontends"].map((key) => crop([W.apps[key].poly], { grow: 34, feather: 12, exclude: knownPolys, exGrow: 4 }));
+  // the four Auditor islands, each with its rim and a little of its light
+  const knownCrops = knownIds.map((k, i) => crop([knownPolys[i]], { grow: 18, feather: 7, exclude: knownPolys.filter((_, j) => j !== i), exGrow: 5 }));
+  const frozen = await R.freeze(crops);
+  const fz = (cv) => frozen[crops.indexOf(cv)];
+  districts.forEach((d) => { d.img = fz(d.cv); });
+  const coastImgs = coasts.map(fz), knownImgs = knownCrops.map(fz), discImgs = discs.map(fz);
+
+  // ---------------------------------------------------------------- the scene's own SVG marks (world units)
+  // the three environments, traced in turn across the city (s2): their territories on both Apps islands and the land
+  const envs = ["On-prem", "GCP", "AWS"];
+  const terrG = svgEl("g", { "data-s04": "territories" }, h.svg);
+  h.svg.insertBefore(terrG, h.svg.firstChild);                               // under the bridges and the port
+  // the traces stop at every label's plate (critique 2026-10-21: borders cut through "Generators", "Containers" and
+  // "QVD files"): a clip of the whole world minus a rounded hole round each label as it sits at camera full (world
+  // units = stage px there; the same box stage.js keeps the owner marks out of). One path, even-odd, so holes that
+  // would overlap are merged first (an overlap would count twice and show the line again)
+  {
+    const PX = 14, PY = 8;
+    let holes = [];
+    for (const el of h.labels.values()) {
+      const Lb = el.__L, w = el.offsetWidth, ht = el.offsetHeight, x = Lb.at[0] - Lb.ax * w, y = Lb.at[1] - Lb.ay * ht;
+      holes.push([x - PX, y - PY, x + w + PX, y + ht + PY]);
+    }
+    for (let merged = true; merged;) {
+      merged = false;
+      outer: for (let i = 0; i < holes.length; i++) for (let j = i + 1; j < holes.length; j++) {
+        const a = holes[i], b = holes[j];
+        if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) {
+          holes[i] = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+          holes.splice(j, 1); merged = true; break outer;
+        }
+      }
+    }
+    const f = (v) => v.toFixed(1);
+    const rr = ([x0, y0, x1, y1], r = 14) => `M${f(x0 + r)},${f(y0)} H${f(x1 - r)} A${r},${r} 0 0 1 ${f(x1)},${f(y0 + r)} V${f(y1 - r)}` +
+      ` A${r},${r} 0 0 1 ${f(x1 - r)},${f(y1)} H${f(x0 + r)} A${r},${r} 0 0 1 ${f(x0)},${f(y1 - r)} V${f(y0 + r)} A${r},${r} 0 0 1 ${f(x0 + r)},${f(y0)} Z`;
+    const defs = svgEl("defs", {}, h.svg);
+    const clip = svgEl("clipPath", { id: "s4-terr-clip", clipPathUnits: "userSpaceOnUse" }, defs);
+    svgEl("path", { d: "M-400,-400 H2320 V1480 H-400 Z " + holes.map((b) => rr(b)).join(" "), "clip-rule": "evenodd" }, clip);
+  }
+  const terr = envs.map((env) => {
+    const g = svgEl("g", { "data-env": env }, terrG);
+    const polys = [W.apps.generators.territories, W.apps.frontends.territories, W.land.territories]
+      .map((ts) => ts.find((t) => t.env === env).poly);
+    const ds = polys.map((p) => "M" + p.map((q) => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" L") + " Z");
+    const fills = ds.map((d) => svgEl("path", { d, fill: T.rgba(T.ink, 0.08), stroke: "none" }, g));
+    // only the lines are clipped: the faint fill runs whole under the labels (a hole in it showed on day as a pale
+    // box round each label)
+    const sg = svgEl("g", { "clip-path": "url(#s4-terr-clip)" }, g);
+    const strokes = ds.map((d) => svgEl("path", { d, fill: "none", stroke: T.rgba(T.ink, 0.9), "stroke-width": 3,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }, sg));
+    return { g, fills, strokes };
+  });
+  // the "?" kindles with two rings of its own light (they leave no trace)
+  const qAt = W.labels.find((l) => l.id === "q").at;
+  const rings = [0, 1].map(() => svgEl("circle", { cx: qAt[0], cy: qAt[1], r: 34, fill: "none", stroke: T.rgb(T.inUse), "stroke-width": 3 }, h.svg));
+
+  // ---------------------------------------------------------------- s0: the night stage, the city not there yet
+  const names = {
+    apps: label("apps"), gen: label("generators"), fe: label("frontends"),
+    known: knownIds.map(label), conn: label("connections"), cont: label("containers"),
+    terr: envs.map((e) => label("terr-" + e)),
+  };
+  const allLabels = [...h.labels.values()];
+  const port = h.ports.known, bridges = knownIds.map((k) => h.bridges.known[W.bridges.known.findIndex((b) => b.id === k)]);
+  const bridgePaths = bridges.map((g) => [...g.querySelectorAll("path")]);
+  const lines = [...document.querySelectorAll(".os-line")];
+  gsap.set([lit, unlit, ...crops.map(fz)], { autoAlpha: 0 });
+  gsap.set(allLabels, { autoAlpha: 0, "--rise": "12px" });
+  gsap.set(h.q, { "--rise": "0px" });                                        // the "?" kindles in place
+  gsap.set([port, ...bridges, ...terr.map((E) => E.g), ...rings, $("#note")], { autoAlpha: 0 });
+  gsap.set(lines, { autoAlpha: 0, "--rise": "14px" });
+  gsap.set(port, { scale: 0.4, svgOrigin: W.ports.find((p) => p.id === "known").at.join(" ") });
+
+  // the headline sits where S04's will be, and the line's first baseline lines up with the headline's
+  {
+    const os = $("#os"), c = document.createElement("canvas").getContext("2d");
+    const base = (el, px, w) => { c.font = `${w} ${px}px Vodafone`; const m = c.measureText("Hg");
+      return (el - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent; };
+    const titleBase = $("#title").offsetTop + base(70, 64, 700);
+    os.style.top = (titleBase - base(54, 44, 400)).toFixed(1) + "px";
+  }
+
+  const tl = gsap.timeline({ paused: true });
+  const rise = (el, at, d = 0.7) => tl.to(el, { autoAlpha: 1, "--rise": "0px", duration: d, ease: R.MOTION.rise }, at);
+  tl.addLabel("s0", 0);
+
+  // ---- the city emerges from the dark, unlit, from the river outward (the way its lights will spread next)
+  tl.to(discImgs[0], { autoAlpha: 1, duration: 1.3, ease: "sine.inOut" }, 0.2);
+  tl.to(discImgs[1], { autoAlpha: 1, duration: 1.4, ease: "sine.inOut" }, 0.65);
+  tl.to(unlit, { autoAlpha: 1, duration: 1.7, ease: "sine.inOut" }, 1.2);
+  tl.set(discImgs, { autoAlpha: 0 }, 2.95);                                 // the unlit map is whole over them
+  tl.to("#note", { autoAlpha: 1, duration: 0.8, ease: R.MOTION.light }, 1.3);   // with the map, always
+
+  // ---- the Apps pair lights, district by district, from the river outward
+  const W0 = 2.8, SPREAD = 1.7, dmax = Math.max(...districts.map((d) => d.d)), jit = R.mulberry32(404);
+  for (const d of districts) {
+    tl.to(d.img, { autoAlpha: 1, duration: 0.7, ease: R.MOTION.light }, W0 + SPREAD * (d.d / dmax) + (jit() - 0.5) * 0.2);
+  }
+  tl.to(coastImgs, { autoAlpha: 1, duration: 0.9, ease: R.MOTION.light }, W0 + SPREAD * 0.75);
+  rise(names.gen, W0 + 1.55);
+  rise(names.fe, W0 + 1.75);
+  rise(names.apps, W0 + 2.0);
+
+  // ---- the common port kindles; the known bridges grow from it, each island lights as its bridge lands
+  const P0 = W0 + SPREAD + 0.5;
+  const Q0 = P0 + 0.45 + 3 * 0.55 + 1.25;
+  tl.to(port, { autoAlpha: 1, scale: 1, duration: 0.6, ease: R.MOTION.kindle }, P0);
+  knownIds.forEach((k, i) => {
+    const at = P0 + 0.45 + i * 0.55;
+    tl.set(bridges[i], { autoAlpha: 1 }, at);
+    tl.fromTo(bridgePaths[i], { drawSVG: "100% 100%" }, { drawSVG: "0% 100%", duration: 0.5, ease: R.MOTION.beam }, at);
+    tl.to(knownImgs[i], { autoAlpha: 1, duration: 0.7, ease: R.MOTION.light }, at + 0.4);
+    rise(names.known[i], at + 0.55);
+  });
+
+  // ---- the "?" in the dark river between the two lit islands
+  tl.to(h.q, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.kindle }, Q0);
+  rings.forEach((r, i) => {
+    tl.fromTo(r, { autoAlpha: 0.7, attr: { r: 34, "stroke-width": 3 } },
+      { autoAlpha: 0, attr: { r: 96, "stroke-width": 1.2 }, duration: 1.3, ease: "power2.out", immediateRender: false }, Q0 + 0.05 + i * 0.35);
+  });
+
+  // ---- what stays detached: dark, named
+  rise(names.conn, Q0 + 1.2);
+  rise(names.cont, Q0 + 1.5);
+  // the whole lit map takes over from the crops in one frame: the same pixels where they are opaque, and at most
+  // 3 levels of light on the water elsewhere (measured), so nothing moves; a fade here repainted the whole map
+  tl.set(lit, { autoAlpha: 1 }, Q0 + 2.0);
+  tl.set(crops.map(fz), { autoAlpha: 0 }, Q0 + 2.0);
+  tl.addLabel("s1", Q0 + 2.4);
+
+  // ---- s2: all of this three times
+  envs.forEach((env, i) => {
+    const at = tl.labels.s1 + 0.1 + i * 0.85, E = terr[i];
+    tl.set(E.g, { autoAlpha: 1 }, at);                                       // traced round, then let go
+    tl.fromTo(E.strokes, { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.65, ease: "power2.inOut", immediateRender: false }, at);
+    tl.fromTo(E.fills, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: R.MOTION.mark, immediateRender: false }, at + 0.15);
+    tl.to(E.g, { autoAlpha: 0, duration: 0.9, ease: "power1.inOut" }, at + 1.0);
+    rise(names.terr[i], at + 0.15);
+  });
+  const S0 = tl.labels.s1 + 0.1 + 2 * 0.85 + 1.5;
+  rise(lines[0], S0, 0.8);
+  rise(lines[1], S0 + 0.45, 0.8);
+  tl.addLabel("s2", S0 + 1.3);
+
+  // the icons are decoded before the scene says it is ready (thumbnails, the player's first frame)
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2"]);
+})();
+</script>
+</body>
+</html>

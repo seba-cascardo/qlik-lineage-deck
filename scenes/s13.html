@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S13 · What belongs together? Products</title>
+<!--
+  S13 (Task 10 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S13; world spec §4: "the app parcels regroup
+  into 1,208 products"). Numbers from foundation/truth.json (asserted below): apps {total 3,562, multi_app {apps 1,779,
+  products 587}, standalone_apps 621, products_total 1,208, no_reload_records_4_months 1,162, by_env_detail},
+  generators {total 1,807, likely_orphan 800 (44%), by_env, reloads_sep_2026 {total 126,997, orphan 37,290 (29%),
+  orphan_per_day 1,243}}. Which parcel is which is illustrative (seeded, per environment with the real per-environment
+  counts); the counts are real.
+
+  The allegory (an agent's call, 2026-10-21, Seba to confirm): flats forming buildings. Every app is a lot of the
+  cadastre; the apps of one product pull together and fuse into one building in --in-use light (a relationship found:
+  their streets close, wider streets open round them), a product of one stands alone in plain light, and the apps
+  with no reload stay loose lots. The fusing runs as a wave of aqua out from the river crossing that S09 built: the
+  products appear where we learnt who saves what and who reads it. Simplification: a product's buildings sit on one
+  bank (the generators of a product on the west, its front ends on the east), never spanning the river.
+  The 800 are whole buildings of the Generators island (products of one, or products made only of generators: a chain
+  that feeds nothing), never apps without reload records (they still reload: 37,290 times in September).
+
+    s0  S12's end: camera conn, the city in "S09-end" (owners hidden), the Apps pair veiled, the 203 connection
+        parcels as S12 left them (67 in use, 22 outlined to review), the 37 dormant containers outlined
+    s1  the continuous sequence (~9 s): dolly conn -> apps, S12's marks leave; "3,562 apps in Production"; a ring of
+        aqua runs out from the river crossing and district by district the lots fuse into products (compact
+        buildings, each its own step of teal, streets of the sea between them), the count running DOWN from 3,562
+        apps to 1,208 products; 12 arcs (illustrative) tie generator buildings over the river to front-end buildings,
+        cresting at the S09 crossing; then "587 multi-app (1,779 apps)" and "621 standalone"; the bay islands and
+        their rails recede
+    s2  the 1,162 apps with no reload records in 4 months dim
+    s3  the city recedes (the arcs, S09's crossing, the second port and its bridges with it); the buildings of the 800
+        generators whose files all appear unused lose their aqua (as S12's 22 connections lost their light) and are
+        outlined --review, from the river outwards: "800 of 1,807 generators (44%) · their files all appear unused"
+        (the % once the count lands)
+    s4  September 2026: 126,997 generator reloads, 37,290 (29%) from those generators, about 1,243 a day; the outlined
+        generators glow warm twice (the kitchen still cooks)
+  S09's traced generator and front end, and the lots at both ends of the gf crossing, are pinned inside multi-app
+  products and kept out of the 800 (and the 800 keep clear of them and of the "Generators" name).
+  End = camera apps with the city receded: S14 ("apps dimmed") starts from it.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  /* clear ground for the text bands (canvases with a +-1 dither, frozen: a CSS gradient this dark bands on the GPU) */
+  .band { position: absolute; left: 0; width: 1920px; pointer-events: none; }
+  #hbA, #hbB { top: 0; height: 340px; }
+  #fb { top: 800px; height: 280px; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* headline ink from y 54, x 96 */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .txt { position: absolute; font-family: "Vodafone", system-ui, sans-serif; white-space: nowrap;
+    -webkit-font-smoothing: antialiased; font-variant-numeric: lining-nums tabular-nums; }
+  .txt b { color: var(--ink); font-weight: 700; }
+  /* one type scale (critique 2026-10-21): hero 60 (the 1,208), counts 40 (3,562 1,162 587 621 800 and the
+     word "products"), running text 28; the legend entries sit in columns (JS sets their margins): the 1,162 of
+     line 1 over the 621 of line 2 */
+  .cnt { font-size: 40px; font-weight: 700; color: var(--ink); margin-right: 10px; }
+  #sub { left: 96px; top: 128px; font-size: 28px; line-height: 54px; font-weight: 400; color: var(--ink-dim); }
+  #row { left: 96px; top: 182px; font-size: 28px; line-height: 70px; color: var(--ink-dim); }
+  #prod { font-size: 40px; font-weight: 500; color: var(--ink); }
+  #prod b { font-size: 60px; margin-right: 12px; }
+  #unit { display: inline-block; position: relative; }
+  #u-apps { position: absolute; left: 0; top: 0; }
+  .ent { display: inline-block; }
+  .gl { display: inline-block; vertical-align: -4px; margin-right: 12px; overflow: visible; }
+  /* bottom band: the generators */
+  #orph { left: 96px; top: 886px; font-size: 28px; line-height: 54px; color: var(--ink-dim); }
+  #rel { left: 96px; top: 948px; font-size: 28px; line-height: 36px; color: var(--ink-dim); }
+  #bar { position: absolute; left: 96px; top: 998px; width: 1100px; height: 10px; }   /* width: the sentence's, set in JS */
+  #bar div { position: absolute; top: 0; height: 10px; border-radius: 2px; transform-origin: 0 50%; }
+  #bar-all { left: 0; width: 1100px; background: color-mix(in srgb, var(--ink-faint) 55%, var(--stage)); }
+  #bar-orph { left: 0; width: 319px; background: var(--review); }   /* 37,290 / 126,997 of the bar, set in JS */
+  .g-multi { fill: color-mix(in srgb, color-mix(in srgb, var(--in-use) 80%, var(--ink)) 62%, var(--stage)); }
+  .g-single { fill: color-mix(in srgb, var(--ink) 38%, var(--stage)); }
+  .g-none { fill: color-mix(in srgb, var(--ink-faint) 12%, var(--stage)); stroke: color-mix(in srgb, var(--ink-faint) 38%, var(--stage)); stroke-width: 2; }
+  .g-orph { fill: color-mix(in srgb, var(--ink) 34%, var(--stage)); stroke: var(--review); stroke-width: 3.5; stroke-linejoin: round; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <canvas id="hbA" class="band" width="1920" height="340"></canvas>
+  <canvas id="hbB" class="band" width="1920" height="340"></canvas>
+  <canvas id="fb" class="band" width="1920" height="280"></canvas>
+  <h1 class="scene-title">What belongs together? Products</h1>
+  <div id="sub" class="txt"><span id="s-apps"><b class="cnt">3,562</b>apps in Production · one parcel each</span><span class="ent" id="e-none"><svg class="gl" width="30" height="26" viewBox="0 0 30 26"><path class="g-none" d="M3,4 L27,3 L28,23 L4,24 Z"/></svg><b class="cnt">1,162</b>with no reload in 4 months</span></div>
+  <div id="row" class="txt"><span id="prod"><b id="nprod">1,208</b><span id="unit"><span id="u-apps">apps</span><span id="u-prod">products</span></span></span><span class="ent" id="e-multi"><svg class="gl" width="40" height="26" viewBox="0 0 40 26"><path class="g-multi" d="M2,5 L38,3 L39,24 L3,25 Z"/></svg><b class="cnt">587</b>multi-app · 1,779 apps</span><span class="ent" id="e-single"><svg class="gl" width="30" height="26" viewBox="0 0 30 26"><path class="g-single" d="M5,5 L22,4 L23,22 L6,23 Z"/></svg><b class="cnt">621</b>standalone</span></div>
+  <div id="orph" class="txt"><svg class="gl" width="30" height="28" viewBox="0 0 30 28"><path class="g-orph" d="M4,5 L27,4 L27,24 L5,24 Z"/></svg><b class="cnt" id="n800">800</b>of 1,807 generators<span id="p44"> (44%)</span> · their files all appear unused</div>
+  <div id="rel" class="txt">September 2026: <b id="nrel">126,997</b> generator reloads · <b id="norel">37,290</b><span id="p29"> (29%)</span> from those generators<span id="pday"> · about 1,243 a day</span></div>
+  <div id="bar"><div id="bar-all"></div><div id="bar-orph"></div></div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, TR = window.TRUTH;
+const NS = "http://www.w3.org/2000/svg";
+document.querySelector("#icon").src = T.icon;
+
+// ---------------------------------------------------------------- the numbers, from truth.json (asserted)
+const N = { apps: 3562, multiApps: 1779, multiProducts: 587, standalone: 621, products: 1208, noRec: 1162,
+  gens: 1807, orphans: 800, orphanPct: 44, reloads: 126997, orphanReloads: 37290, orphanReloadPct: 29, perDay: 1243 };
+const ENVS = ["On-prem", "GCP", "AWS"];
+const DET = {}, ORPH = {};
+{
+  const A = TR.apps, G = TR.generators, RL = G.reloads_sep_2026;
+  const ok = A.total === N.apps && A.multi_app.apps === N.multiApps && A.multi_app.products === N.multiProducts
+    && A.standalone_apps === N.standalone && A.products_total === N.products && A.no_reload_records_4_months === N.noRec
+    && N.multiProducts + N.standalone === N.products && N.multiApps + N.standalone + N.noRec === N.apps
+    && G.total === N.gens && G.likely_orphan === N.orphans && G.likely_orphan_pct === N.orphanPct
+    && RL.total === N.reloads && RL.orphan === N.orphanReloads && RL.orphan_pct === N.orphanReloadPct && RL.orphan_per_day === N.perDay;
+  if (!ok) throw new Error("s13: the counts no longer match foundation/truth.json");
+  for (const d of A.by_env_detail) DET[d.env] = d;
+  for (const d of G.by_env) ORPH[d.env] = d;
+  const sum = (k, o) => ENVS.reduce((s, e) => s + o[e][k], 0);
+  if (sum("multi_app_apps", DET) !== N.multiApps || sum("products", DET) !== N.multiProducts || sum("standalone", DET) !== N.standalone
+    || sum("no_records", DET) !== N.noRec || sum("orphan", ORPH) !== N.orphans || sum("total", ORPH) !== N.gens) throw new Error("s13: per-environment counts");
+}
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+// integer shares of total in proportion to weights (largest remainder)
+function split(total, weights) {
+  const S = weights.reduce((a, b) => a + b, 0), raw = weights.map((w) => (S ? total * w / S : 0)), out = raw.map(Math.floor);
+  const left = total - out.reduce((a, b) => a + b, 0);
+  raw.map((r, i) => [r - out[i], i]).sort((a, b) => b[0] - a[0]).slice(0, left).forEach(([, i]) => out[i]++);
+  return out;
+}
+// S12's helpers (its end state is this scene's start): a polygon moved inward by d; its 2 * area / perimeter
+function inset(poly, d) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  const s = a > 0 ? 1 : -1, n = poly.length, lines = [];
+  for (let i = 0; i < n; i++) {
+    const p = poly[i], q = poly[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L * s, ny = dx / L * s;
+    lines.push([[p[0] + nx * d, p[1] + ny * d], [dx, dy], [nx, ny]]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [p1, d1, n1] = lines[(i + n - 1) % n], [p2, d2, n2] = lines[i], v = poly[i];
+    const den = d1[0] * d2[1] - d1[1] * d2[0];
+    let q = null;
+    if (Math.abs(den) > 1e-6) {
+      const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
+      q = [p1[0] + d1[0] * t, p1[1] + d1[1] * t];
+    }
+    if (!q || Math.hypot(q[0] - v[0], q[1] - v[1]) > 2.5 * d) {
+      const mx = n1[0] + n2[0], my = n1[1] + n2[1], L = Math.hypot(mx, my) || 1;
+      q = [v[0] + mx / L * d, v[1] + my / L * d];
+    }
+    out.push(q);
+  }
+  return out;
+}
+function girth(poly) {
+  let per = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; per += Math.hypot(q[0] - p[0], q[1] - p[1]); }
+  return 2 * R.area(poly) / (per || 1);
+}
+// a canvas in world units over rect (res canvas px per unit), placed in the world layer
+function worldCanvas(rect, res, cls) {
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res); cv.className = cls;
+  cv.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+  const g = cv.getContext("2d");
+  g.setTransform(res, 0, 0, res, -rect.x * res, -rect.y * res);
+  return [cv, g];
+}
+const rectOf = (polys, pad) => {
+  let b = [1e9, 1e9, -1e9, -1e9];
+  for (const p of polys) { const q = R.bb(p); b = [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])]; }
+  return { x: Math.floor(b[0]) - pad, y: Math.floor(b[1]) - pad, w: Math.ceil(b[2] - b[0]) + 2 * pad + 1, h: Math.ceil(b[3] - b[1]) + 2 * pad + 1 };
+};
+// a dithered band of the stage colour, alpha(x, y) in 0..1 (frozen with the rest)
+function band(cv, alpha, seed) {
+  const g = cv.getContext("2d"), w = cv.width, ht = cv.height, id = g.createImageData(w, ht), d = id.data;
+  const [sr, sg, sb] = T.channels(T.stage), r = R.mulberry32(seed);
+  for (let y = 0; y < ht; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    d[i] = sr; d[i + 1] = sg; d[i + 2] = sb;
+    d[i + 3] = Math.max(0, Math.min(255, Math.round(alpha(x, y) * 255 + (r() - 0.5) * 2)));
+  }
+  g.putImageData(id, 0, 0);
+}
+const sm = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+
+(async () => {
+  // S12 ends at camera conn in "S09-end" with no map labels: S13 starts there
+  const h = await WorldStage.mount(document.querySelector("#ws"), { cam: "conn", state: "S09-end" });
+  gsap.set(h.layers.owners, { autoAlpha: 0 });                 // world units: hidden at zoom > 1 (brief §3)
+  for (const el of h.labels.values()) gsap.set(el, { autoAlpha: 0 });
+  const islLabels = ["generators", "frontends"].map((id) => h.labels.get(id));
+
+  // ================================================================ the apps: who is who (illustrative, seeded)
+  const ISL = { g: W.apps.generators, f: W.apps.frontends };
+  const lots = [];
+  for (const k of ["g", "f"]) for (const p of ISL[k].parcels) lots.push({ id: p.id, isl: k, e: p.e, s: p.s, p: p.p, c: p.c, d: k + p.s });
+  if (lots.length !== N.apps) throw new Error("s13: app parcels");
+  for (const e of ENVS) if (lots.filter((L) => L.isl === "g" && L.e === e).length !== ORPH[e].total) throw new Error("s13: generators per environment");
+
+  const rnd = R.mulberry32(1313), dR = new Map();
+  for (const L of lots) if (!dR.has(L.d)) dR.set(L.d, rnd());
+  for (const L of lots) L.r = rnd();
+  // patches inside a district (value noise, cells of 46 world units), so each kind gathers in neighbourhoods
+  const noise = (seed, cell) => {
+    const r = R.mulberry32(seed), grid = new Map();
+    const at = (i, j) => { const k = i + "," + j; if (!grid.has(k)) grid.set(k, r()); return grid.get(k); };
+    return ([x, y]) => {
+      const u = x / cell, v = y / cell, i = Math.floor(u), j = Math.floor(v), fx = sm(u - i), fy = sm(v - j);
+      const a = at(i, j), b = at(i + 1, j), c = at(i, j + 1), d = at(i + 1, j + 1);
+      return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+    };
+  };
+  const nz = noise(2309, 46);
+  for (const L of lots) L.z = 0.35 * dR.get(L.d) + 0.57 * nz(L.c) + 0.08 * L.r;
+  // S09's traced apps stay inside products (critique 2026-10-21: the lot where the bright gf crossing starts sat in
+  // the 1,162 "no reload" group and then among the 800): the route's generator and front end, the lots at both
+  // ends of the gf crossing, and each one's nearest neighbour in its district, so the product has 2+ apps there
+  const d2p = (L, pt) => Math.hypot(L.c[0] - pt[0], L.c[1] - pt[1]);
+  const nearest = (pool, pt) => pool.reduce((b, L) => (d2p(L, pt) < d2p(b, pt) ? L : b));
+  const GF = W.bridges.gf, byId = new Map(lots.map((L) => [L.id, L]));
+  const pinned = new Set();
+  for (const L of [byId.get(W.route.gen), byId.get(W.route.fe), nearest(lots.filter((x) => x.isl === "g"), GF.a), nearest(lots.filter((x) => x.isl === "f"), GF.b)]) {
+    if (!L) throw new Error("s13: route lots");
+    pinned.add(L);
+    pinned.add(nearest(lots.filter((x) => x.d === L.d && x !== L), L.c));
+  }
+  for (const L of pinned) L.z = 10 + L.r;      // sorted last: "multi"
+  const products = [];          // {isl, d, members: [lots], c}
+  for (const e of ENVS) {
+    const D = DET[e], by = { g: lots.filter((L) => L.e === e && L.isl === "g"), f: lots.filter((L) => L.e === e && L.isl === "f") };
+    const w = [by.g.length, by.f.length];
+    const nRec = split(D.no_records, w), nSt = split(D.standalone, w);
+    const nMul = [w[0] - nRec[0] - nSt[0], w[1] - nRec[1] - nSt[1]];
+    const nProd = split(D.products, nMul);
+    ["g", "f"].forEach((k, i) => {
+      // districts lean (a neighbourhood of loose lots, one of products), so it reads as a city
+      const list = by[k].slice().sort((a, b) => a.z - b.z);
+      list.forEach((L, j) => { L.cat = j < nRec[i] ? "none" : j < nRec[i] + nSt[i] ? "single" : "multi"; });
+      // a district with a single multi-app lot cannot hold a product of several apps: it trades with a richer one
+      const multiBy = () => { const m = new Map(); for (const L of list) if (L.cat === "multi") { if (!m.has(L.d)) m.set(L.d, []); m.get(L.d).push(L); } return m; };
+      for (let guard = 0; ; guard++) {
+        if (guard > 400) throw new Error("s13: lone multi-app lots");
+        const m = multiBy(), lone = [...m.values()].find((a) => a.length === 1);
+        if (!lone) break;
+        lone[0].cat = "single";
+        const s = list.find((L) => L.cat === "single" && m.has(L.d) && m.get(L.d).length >= 2);
+        if (!s) throw new Error("s13: no standalone lot to trade");
+        s.cat = "multi";
+      }
+      // products per district, in proportion, each of 2 apps or more, summing to the environment's real count
+      const m = multiBy(), ds = [...m.keys()], P = nProd[i], M = nMul[i];
+      const g = ds.map((d) => Math.max(1, Math.min(Math.floor(m.get(d).length / 2), Math.round(m.get(d).length * P / M))));
+      let tot = g.reduce((a, b) => a + b, 0);
+      while (tot < P) {
+        let best = -1, bv = -1;
+        ds.forEach((d, j) => { const v = m.get(d).length / g[j]; if (g[j] + 1 <= Math.floor(m.get(d).length / 2) && v > bv) { bv = v; best = j; } });
+        if (best < 0) throw new Error("s13: products do not fit"); g[best]++; tot++;
+      }
+      while (tot > P) {
+        let best = -1, bv = 1e9;
+        ds.forEach((d, j) => { const v = m.get(d).length / g[j]; if (g[j] > 1 && v < bv) { bv = v; best = j; } });
+        if (best < 0) throw new Error("s13: products do not fit"); g[best]--; tot--;
+      }
+      // each district's multi-app lots in a snake order (rows of 14 units); a product starts at the first free lot
+      // and grows by the free lot nearest its centre, so its apps are neighbours and fuse into one compact building
+      ds.forEach((d, j) => {
+        const mem = m.get(d), y0 = Math.min(...mem.map((L) => L.c[1])), row = (L) => Math.floor((L.c[1] - y0) / 14);
+        mem.sort((a, b) => (row(a) - row(b)) || (row(a) % 2 ? b.c[0] - a.c[0] : a.c[0] - b.c[0]));
+        const sizes = new Array(g[j]).fill(2);
+        for (let x = mem.length - 2 * g[j]; x > 0; x--) sizes[Math.floor(rnd() * g[j])]++;
+        const free = new Set(mem);
+        for (const n of sizes) {
+          const members = [mem.find((L) => free.has(L))];
+          free.delete(members[0]);
+          while (members.length < n) {
+            const cx = members.reduce((s, L) => s + L.c[0], 0) / members.length, cy = members.reduce((s, L) => s + L.c[1], 0) / members.length;
+            let best = null, bd = 1e9;
+            for (const L of free) { const v = Math.hypot(L.c[0] - cx, L.c[1] - cy); if (v < bd) { bd = v; best = L; } }
+            members.push(best); free.delete(best);
+          }
+          const c = [members.reduce((s, L) => s + L.c[0], 0) / n, members.reduce((s, L) => s + L.c[1], 0) / n];
+          const pr = { isl: k, d, members, c };
+          for (const L of members) L.prod = pr;
+          products.push(pr);
+        }
+      });
+    });
+  }
+  const cnt = (cat) => lots.filter((L) => L.cat === cat).length;
+  if (cnt("none") !== N.noRec || cnt("single") !== N.standalone || cnt("multi") !== N.multiApps || products.length !== N.multiProducts
+    || products.some((p) => p.members.length < 2)) throw new Error("s13: products");
+  if ([...pinned].some((L) => L.cat !== "multi")) throw new Error("s13: S09's apps must sit in products");
+
+  // the lots after: a product's apps pull together (scaled about its centre), a product of one about its own
+  const S = 0.82;
+  for (const L of lots) {
+    const c = L.cat === "multi" ? L.prod.c : L.c, s = L.cat === "none" ? 1 : S;
+    L.q = L.p.map(([x, y]) => [c[0] + (x - c[0]) * s, c[1] + (y - c[1]) * s]);
+  }
+  // the 800 generators whose files all appear unused: per environment, among generators with reload records, whole
+  // units (a product of one, or a product made only of generators: a chain that feeds nothing), in neighbourhoods
+  const r2 = R.mulberry32(1807), d2 = new Map(), nz2 = noise(1210, 60);
+  for (const L of lots) if (!d2.has(L.d)) d2.set(L.d, r2());
+  const units = [];          // {e, lots, c}
+  for (const L of lots) if (L.isl === "g" && L.cat === "single") units.push({ e: L.e, lots: [L], c: L.c });
+  for (const p of products) if (p.isl === "g") units.push({ e: p.members[0].e, lots: p.members, c: p.c });
+  for (const u of units) u.z = 0.45 * d2.get(u.lots[0].d) + 0.45 * nz2(u.c) + 0.1 * r2();
+  // never S09's generator (its files are read: S08/S09), and not round it either: the orange must not start where
+  // the gf crossing leaves the bank; nor under the "Generators" name (it would sit on lit orange outlines at s3)
+  const GL = W.labels.find((l) => l.id === "generators").at;
+  for (const u of units) {
+    if (u.lots.some((L) => pinned.has(L))) u.z = -99;
+    else if (u.lots.some((L) => d2p(L, GF.a) < 120 || d2p(L, W.route.G) < 120)) u.z -= 3;
+    else if (u.lots.some((L) => Math.abs(L.c[0] - GL[0]) < 76 && Math.abs(L.c[1] - GL[1]) < 30)) u.z -= 3;
+  }
+  for (const e of ENVS) {
+    let left = ORPH[e].orphan;
+    const mine = units.filter((u) => u.e === e && u.z > -99).sort((a, b) => b.z - a.z);
+    // a unit that would overshoot is skipped: products of one further down land the exact count
+    for (const u of mine) if (u.lots.length <= left) { u.orphan = true; left -= u.lots.length; if (!left) break; }
+    if (left) throw new Error("s13: orphans do not fit " + e);
+  }
+  for (const u of units) if (u.orphan) for (const L of u.lots) L.orphan = true;
+  const orphUnits = units.filter((u) => u.orphan);
+  if (lots.filter((L) => L.orphan).length !== N.orphans) throw new Error("s13: orphans");
+
+  // ================================================================ drawing (world units), frozen before Scene.init
+  const KF = T.channels(T.known.fill), AP = T.channels(T.app), IU = T.channels(T.inUse);
+  // an opaque colour: the island's ground with a of the app's light and u of the in-use light (a relationship found)
+  const mix = (a, u = 0) => T.rgb(KF.map((v, i) => Math.round(v * (1 - a - u) + AP[i] * a + IU[i] * u)));
+  // the map's own light on each app lot (world.js map(): shadeOf(51), in the order the map draws them)
+  const base = new Map();
+  {
+    const r = R.mulberry32(51), memo = new Map(), as = (k) => { if (!memo.has(k)) memo.set(k, r()); return memo.get(k); };
+    for (const key of ["generators", "frontends"]) for (const pc of W.apps[key].parcels) {
+      const a = 0.24 + 0.16 * as(key + pc.s); base.set(pc.id, T.rgba(T.app, a + 0.07 * as(pc.id)));
+    }
+  }
+  const FILL = { single: mix(0.3), multi: mix(0.12, 0.5), orphan: mix(0.3) };
+  { const rt = R.mulberry32(587); for (const p of products) { const v = rt(); p.fill = mix(0.08 + 0.08 * v, 0.4 + 0.2 * rt()); } }
+  const canv = [];
+
+  // ---- S12's end, so the cross-fade from it reads as one world: the veil over the Apps pair, the 203 connections,
+  //      the 37 dormant containers (S12's own seeds and styles)
+  const vres = 1;
+  const [veilC, vg] = worldCanvas(h.rect, vres, "s13-veil");
+  vg.filter = `blur(${8 * vres}px)`; vg.fillStyle = T.rgba(T.sea, 0.62);
+  for (const poly of [W.apps.generators.poly, W.apps.frontends.poly]) { R.path(vg, poly); vg.fill(); }
+  vg.filter = "none";
+  canv.push(veilC);
+  const connRect = rectOf([W.conn.poly], 40);
+  const [connC, cg] = worldCanvas(connRect, 2, "s13-s12conn");
+  {
+    const rr = R.mulberry32(1203), dist = new Map();
+    for (const pc of W.conn.parcels) if (!dist.has(pc.d)) dist.set(pc.d, rr());
+    const ranked = W.conn.parcels.map((pc) => [0.62 * dist.get(pc.d) + 0.38 * rr(), pc]).sort((a, b) => b[0] - a[0]).map((x) => x[1]);
+    const useP = ranked.slice(0, 67), revP = [];
+    for (const pc of ranked.slice(67)) if (revP.length < 22 && girth(pc.p) >= 9) revP.push(pc);
+    const sh = R.mulberry32(512), dTone = new Map(), tone = new Map();
+    for (const pc of W.conn.parcels) { if (!dTone.has(pc.d)) dTone.set(pc.d, sh()); tone.set(pc.id, 0.6 * dTone.get(pc.d) + 0.4 * sh()); }
+    R.bloomCells(cg, useP.map((pc) => pc.p), T.inUse, 0.7, 12, connRect, 2);
+    cg.setTransform(2, 0, 0, 2, -connRect.x * 2, -connRect.y * 2);
+    for (const pc of useP) {
+      R.path(cg, pc.p); cg.fillStyle = T.rgba(T.app, 0.2 + 0.16 * tone.get(pc.id)); cg.fill();
+      cg.fillStyle = T.rgba(T.inUse, 0.58 + 0.24 * tone.get(pc.id)); cg.fill();
+    }
+    cg.lineJoin = "round";
+    cg.beginPath(); for (const pc of W.conn.parcels) { const q = pc.p; q.forEach((v, i) => (i ? cg.lineTo(v[0], v[1]) : cg.moveTo(v[0], v[1]))); cg.closePath(); }
+    cg.strokeStyle = T.rgba(T.sea, 0.85); cg.lineWidth = 2; cg.stroke();
+    cg.beginPath(); for (const q of W.conn.districts) { q.forEach((v, i) => (i ? cg.lineTo(v[0], v[1]) : cg.moveTo(v[0], v[1]))); cg.closePath(); }
+    cg.strokeStyle = T.rgb(T.sea); cg.lineWidth = 3.4; cg.stroke();
+    cg.strokeStyle = T.rgb(T.review); cg.lineWidth = 2.2;
+    for (const pc of revP) { R.path(cg, inset(pc.p, 2.6)); cg.stroke(); }
+  }
+  canv.push(connC);
+  const dormant = W.land.containers.filter((c) => c.dormant);
+  const contRect = rectOf(dormant.map((c) => c.poly), 6);
+  const [contC, kg] = worldCanvas(contRect, 2, "s13-s12cont");
+  kg.lineJoin = "round"; kg.strokeStyle = T.rgb(T.review); kg.lineWidth = 1.8;
+  for (const ct of dormant) { R.path(kg, inset(ct.poly, Math.min(1.6, 0.25 * girth(ct.poly)))); kg.stroke(); }
+  canv.push(contC);
+
+  // ---- the products, one tile per stream district: the lots as they end, over the district's own ground
+  const tiles = [];
+  for (const k of ["g", "f"]) ISL[k].streams.forEach((D, si) => {
+    const d = k + si, mine = lots.filter((L) => L.d === d), rect = rectOf([D.poly], 16);
+    const [cv, g] = worldCanvas(rect, 2, "s13-tile");
+    R.path(g, D.poly); g.fillStyle = T.known.fill; g.fill();
+    g.save(); R.path(g, D.poly); g.clip();
+    g.lineJoin = "miter"; g.miterLimit = 3;
+    // apps with no reload records: loose lots, as the map draws them
+    const none = mine.filter((L) => L.cat === "none");
+    for (const L of none) { R.path(g, L.p); g.fillStyle = base.get(L.id); g.fill(); }
+    g.beginPath(); for (const L of none) { L.p.forEach((v, i) => (i ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1]))); g.closePath(); }
+    g.globalAlpha = 0.72; g.lineWidth = 1.25; g.strokeStyle = T.known.fill; g.stroke(); g.globalAlpha = 1;
+    // products of one
+    g.fillStyle = FILL.single;
+    for (const L of mine) if (L.cat === "single") { R.path(g, L.q); g.fill(); }
+    // products of several apps: a street of the sea opens round each (2.4 units: ~1.7 px at 720p, so neighbouring
+    // buildings stay apart), then its lots fuse into one building (a stroke of their own colour closes the seams);
+    // each building takes its own step of the in-use light, so two that touch still read as two
+    const multi = mine.filter((L) => L.cat === "multi"), prods = products.filter((p) => p.d === d);
+    for (const p of prods) {
+      g.beginPath(); for (const L of p.members) { L.q.forEach((v, i) => (i ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1]))); g.closePath(); }
+      g.lineJoin = "round"; g.strokeStyle = T.sea; g.lineWidth = 5.8; g.stroke();
+      g.fillStyle = p.fill; g.fill(); g.strokeStyle = p.fill; g.lineWidth = 1.0; g.stroke();
+    }
+    g.restore();
+    R.path(g, D.poly); g.lineJoin = "round"; g.lineWidth = 2.4; g.strokeStyle = T.sea; g.stroke();
+    if (multi.length) R.bloomCells(g, multi.map((L) => L.q), T.inUse, 0.32, 9, rect, 2, 40 + tiles.length);
+    const cen = R.centroid(D.poly);
+    tiles.push({ cv, d, k, rect, c: cen, apps: mine.length, prods: products.filter((p) => p.d === d).length + mine.filter((L) => L.cat === "single").length });
+    canv.push(cv);
+  });
+  if (tiles.reduce((s, t) => s + t.prods, 0) !== N.products) throw new Error("s13: products per tile");
+
+  // ---- s2: the apps with no reload records dim (toward the island's ground)
+  const islRect = rectOf([W.apps.generators.poly, W.apps.frontends.poly], 4);
+  const [noneC, ng] = worldCanvas(islRect, 2, "s13-none");
+  ng.fillStyle = T.rgba(T.known.fill, 0.7);
+  for (const L of lots) if (L.cat === "none") { R.path(ng, L.p); ng.fill(); }
+  canv.push(noneC);
+  // a unit (a building) as one shape: its lots, and wide = the stroke that fuses them (+ a margin)
+  const unitPath = (g, u) => { g.beginPath(); for (const L of u.lots) { L.q.forEach((v, i) => (i ? g.lineTo(v[0], v[1]) : g.moveTo(v[0], v[1]))); g.closePath(); } };
+  // ---- end of s1: the four bay islands recede (their lit grey read as "standalone" products: critique 2026-10-21)
+  const bays = Object.values(W.islands).map((i) => i.poly), bayRect = rectOf(bays, 4);
+  const [bayC, bg] = worldCanvas(bayRect, 2, "s13-bays");
+  bg.fillStyle = T.rgba(T.sea, 0.6);
+  for (const poly of bays) { R.path(bg, poly); bg.fill(); }
+  canv.push(bayC);
+  // ---- s3: the Apps pair recedes round the 800 (a veil of the sea), and their buildings lose the in-use light of a
+  //      relationship (as S12's 22 connections did): a plain mid light, their own, over the veil ...
+  const recRect = rectOf([W.apps.generators.poly, W.apps.frontends.poly], 4);
+  const [recC, rg] = worldCanvas(recRect, 2, "s13-recede");
+  rg.fillStyle = T.rgba(T.sea, 0.6);
+  for (const poly of [W.apps.generators.poly, W.apps.frontends.poly]) { R.path(rg, poly); rg.fill(); }
+  rg.lineJoin = "round";
+  for (const u of orphUnits) {
+    unitPath(rg, u); rg.strokeStyle = T.sea; rg.lineWidth = 5.8; rg.stroke();
+    rg.fillStyle = FILL.orphan; rg.fill(); rg.strokeStyle = FILL.orphan; rg.lineWidth = 1.0; rg.stroke();
+  }
+  canv.push(recC);
+  // ... and each of their buildings is outlined to review (a ring just outside it: a wide stroke, its inside cut
+  // out), one tile per generator district
+  const otiles = [];
+  ISL.g.streams.forEach((D, si) => {
+    const d = "g" + si, mine = orphUnits.filter((u) => u.lots[0].d === d);
+    if (!mine.length) return;
+    const rect = rectOf(mine.flatMap((u) => u.lots.map((L) => L.q)), 6), [cv, g] = worldCanvas(rect, 2, "s13-orph");
+    g.lineJoin = "round"; g.strokeStyle = T.rgb(T.review); g.lineWidth = 5.4;
+    for (const u of mine) { unitPath(g, u); g.stroke(); }
+    g.globalCompositeOperation = "destination-out"; g.fillStyle = T.rgb(T.sea); g.strokeStyle = T.rgb(T.sea); g.lineWidth = 1.0;
+    for (const u of mine) { unitPath(g, u); g.fill(); g.stroke(); }
+    g.globalCompositeOperation = "source-over";
+    otiles.push({ cv, d, c: R.centroid(D.poly), n: mine.reduce((s, u) => s + u.lots.length, 0) });
+    canv.push(cv);
+  });
+  // ---- s4: "the kitchen still cooks": the 800 glow warm twice (their reloads), a bloom of the review light over
+  //      their buildings and their outlines a touch wider
+  const orphLots = orphUnits.flatMap((u) => u.lots), glowRect = rectOf(orphLots.map((L) => L.q), 24);
+  const [glowC, wg] = worldCanvas(glowRect, 2, "s13-glow");
+  R.bloomCells(wg, orphLots.map((L) => L.q), T.review, 0.45, 7, glowRect, 2, 800);
+  wg.setTransform(2, 0, 0, 2, -glowRect.x * 2, -glowRect.y * 2);
+  wg.lineJoin = "round"; wg.strokeStyle = T.rgb(T.review); wg.lineWidth = 2.2;
+  for (const u of orphUnits) { unitPath(wg, u); wg.stroke(); }
+  canv.push(glowC);
+
+  // ---- the bands of clear ground for the text
+  const hbA = document.querySelector("#hbA"), hbB = document.querySelector("#hbB"), fb = document.querySelector("#fb");
+  // S12's headband (its own curve: towards the port at x 1110-1460 it fades)
+  band(hbA, (x, y) => Math.max(0, (0.94 - 0.1 * sm(y / 160) - 0.84 * sm((y - 120) / 220)) * (1 - sm((x - 1110) / 350))), 340);
+  // at camera apps the top is open sea: the band hides its contour rings behind the two lines of text
+  band(hbB, (x, y) => 0.93 * (1 - sm((y - 200) / 90)), 341);
+  // the bottom: the detached islands recede under the generators' lines, and the icon's corner stays clear
+  // (it starts lower at the west, where the Generators island reaches down to y 882)
+  band(fb, (x, y) => 0.95 * sm((y + 800 - (852 + 30 * (1 - sm((x - 250) / 300)))) / 48), 342);
+  canv.push(hbA, hbB, fb);
+
+  // ---- into the world layer: above the map, under the SVG overlay (bridges and ports stay on top)
+  const tilesEl = document.createElement("div"), otilesEl = document.createElement("div");
+  // no will-change here or on the veils: in the harness's software compositing, extra layers cost frames (measured:
+  // s2 -> s3 at 4x throttle 44 fps with them, 54 without)
+  tilesEl.style.cssText = otilesEl.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px";
+  for (const el of [veilC, connC, contC, tilesEl, bayC, noneC, recC, otilesEl, glowC]) h.world.insertBefore(el, h.svg);
+  for (const t of tiles) tilesEl.appendChild(t.cv);
+  for (const t of otiles) otilesEl.appendChild(t.cv);
+  // the ring of aqua: its own SVG over the overlay, clipped to the two Apps islands
+  const ringSvg = svgEl("svg", { width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, h.world);
+  ringSvg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  const clip = svgEl("clipPath", { id: "s13-apps" }, svgEl("defs", {}, ringSvg));
+  for (const poly of [W.apps.generators.poly, W.apps.frontends.poly]) svgEl("path", { d: "M" + poly.map((p) => p.join(",")).join(" L") + " Z" }, clip);
+  const Q = W.bridges.gf.q;
+  const ring = svgEl("g", { "clip-path": "url(#s13-apps)" }, ringSvg);
+  const ringGlow = svgEl("circle", { cx: Q[0], cy: Q[1], r: 10, fill: "none", stroke: T.inUse, "stroke-width": 16, "stroke-opacity": 0.14 * T.halo }, ring);
+  const ringCore = svgEl("circle", { cx: Q[0], cy: Q[1], r: 10, fill: "none", stroke: T.inUse, "stroke-width": 2.6, "stroke-opacity": 0.9 }, ring);
+
+  const frozen = await R.freeze(canv);
+  const fzz = (c) => R.fz(c);
+  const [veil, connI, contI, bayI, noneI, recI, glowI, hbAI, hbBI, fbI] = [veilC, connC, contC, bayC, noneC, recC, glowC, hbA, hbB, fb].map(fzz);
+  const tileI = tiles.map((t) => fzz(t.cv)), otileI = otiles.map((t) => fzz(t.cv));
+  if (frozen.length !== canv.length) throw new Error("s13: freeze");
+  if (tiles.reduce((s, t) => s + t.apps, 0) !== N.apps) throw new Error("s13: apps per tile");
+
+  // ================================================================ the timeline
+  h.place("apps");                                             // the island names are shown at camera apps only
+  gsap.set([bayI, noneI, recI, glowI, ...tileI, ...otileI, hbBI, fbI, ring, ...islLabels], { autoAlpha: 0 });
+  tiles.forEach((t, i) => gsap.set(tileI[i], { transformOrigin: `${(t.c[0] - t.rect.x).toFixed(1)}px ${(t.c[1] - t.rect.y).toFixed(1)}px` }));
+  const sApps = document.querySelector("#s-apps"), eNone = document.querySelector("#e-none");
+  const prod = document.querySelector("#prod"), eMulti = document.querySelector("#e-multi"), eSingle = document.querySelector("#e-single");
+  const uApps = document.querySelector("#u-apps"), uProd = document.querySelector("#u-prod");
+  const orph = document.querySelector("#orph"), rel = document.querySelector("#rel");
+  const barAll = document.querySelector("#bar-all"), barOrph = document.querySelector("#bar-orph");
+  // the legend in columns (layout px, so a scaled body does not matter): the 587 one step after "1,208 products",
+  // the 621 and, on line 1, the 1,162 one step after the wider of the 587 entry and the apps line
+  {
+    const R0 = (el) => el.offsetLeft + el.offsetWidth;
+    for (const el of [eNone, eMulti, eSingle]) el.style.marginLeft = "0px";
+    eMulti.style.marginLeft = Math.round(R0(prod) + 64 - eMulti.offsetLeft) + "px";
+    const colC = Math.round(Math.max(R0(eMulti), R0(sApps)) + 64);
+    eSingle.style.marginLeft = Math.round(colC - eSingle.offsetLeft) + "px";
+    eNone.style.marginLeft = Math.round(colC - eNone.offsetLeft) + "px";
+  }
+  gsap.set([sApps, eNone, prod, eMulti, eSingle, orph, rel], { autoAlpha: 0, y: 14 });
+  gsap.set([uProd, document.querySelector("#p44"), document.querySelector("#p29"), document.querySelector("#pday")], { autoAlpha: 0 });
+  // the bar spans the sentence above it (fonts are loaded: mount waited for them); its orange part is the share
+  {
+    const w = Math.round(rel.offsetWidth), wo = Math.round(w * N.orphanReloads / N.reloads);
+    document.querySelector("#bar").style.width = w + "px"; barAll.style.width = w + "px"; barOrph.style.width = wo + "px";
+  }
+  gsap.set([barAll, barOrph], { scaleX: 0 });
+  gsap.set(document.querySelector("#bar"), { autoAlpha: 0 });
+  const rise = (tl, el, at) => tl.to(el, { autoAlpha: 1, y: 0, duration: 0.7, ease: R.MOTION.rise }, at);
+  // a count is drawn from its tween's own value, so every seek renders it
+  function countTo(tl, el, to, dur, at, ease = "power1.inOut") {
+    const o = { v: 0 };
+    el.textContent = fmt(0);
+    tl.to(o, { v: to, duration: dur, ease, onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+  }
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  // ---- s0 -> s1: the dolly to the apps, S12's marks leave, the products form
+  tl.to(h.world, { ...R.camera("apps"), duration: 2.0, ease: R.MOTION.dolly }, "s0+=0.15");
+  tl.to([connI, contI], { autoAlpha: 0, duration: 0.8, ease: "power1.out" }, "s0+=0.2");
+  tl.to(veil, { autoAlpha: 0, duration: 1.3, ease: R.MOTION.light }, "s0+=0.7");
+  tl.to(hbAI, { autoAlpha: 0, duration: 1.0, ease: R.MOTION.light }, "s0+=0.8");
+  tl.to(hbBI, { autoAlpha: 1, duration: 1.0, ease: R.MOTION.light }, "s0+=0.8");
+  tl.to(fbI, { autoAlpha: 1, duration: 1.0, ease: R.MOTION.light }, "s0+=1.1");
+  rise(tl, sApps, "s0+=1.8");
+  tl.to(islLabels, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.rise }, "s0+=2.0");
+  // the wave: out from the river crossing; a district fuses as the ring reaches its centre. Districts follow one
+  // another at an even pace (by rank of distance, not by distance: the outer rings hold most of them, and fading many
+  // tiles at once dropped frames at 4x throttle), the ring's radius passing through each centre at its time
+  const T0 = 2.6, DUR = 5.0, FADE = 0.4, dist = (c) => Math.hypot(c[0] - Q[0], c[1] - Q[1]);
+  const order = tiles.map((t, i) => [dist(t.c), i]).sort((a, b) => a[0] - b[0]);
+  const RMAX = order[order.length - 1][0] + 40;
+  const knots = [[0, 8]];
+  order.forEach(([d, i], k) => { tiles[i].at = T0 + DUR * (k + 1) / (order.length + 1); knots.push([tiles[i].at - T0, Math.max(d, knots[knots.length - 1][1])]); });
+  knots.push([DUR, RMAX]);
+  const radius = (t) => {
+    for (let k = 1; k < knots.length; k++) if (t <= knots[k][0]) { const [a, ra] = knots[k - 1], [b, rb] = knots[k]; return ra + (rb - ra) * (b > a ? (t - a) / (b - a) : 1); }
+    return RMAX;
+  };
+  tl.set(ring, { autoAlpha: 1 }, T0);
+  {
+    const o = { t: 0 };
+    tl.to(o, { t: DUR, duration: DUR, ease: "none", onUpdate: () => { const r = radius(o.t).toFixed(1); ringCore.setAttribute("r", r); ringGlow.setAttribute("r", r); } }, T0);
+  }
+  tl.to(ring, { autoAlpha: 0, duration: 0.6, ease: "power1.in" }, T0 + DUR - 0.5);
+  tiles.forEach((t, i) => {
+    tl.fromTo(tileI[i], { autoAlpha: 0 }, { autoAlpha: 1, duration: FADE, ease: "power2.out", immediateRender: false }, t.at);
+    tl.fromTo(tileI[i], { scale: 1.035 }, { scale: 1, duration: 0.6, ease: R.MOTION.lift, immediateRender: false }, t.at);
+  });
+  // ---- the products join the two banks: as both ends have fused, an arc of aqua runs from a generator building
+  //      over the river to a front-end building that reads its files (12, illustrative: which buildings, and how
+  //      many arcs, are not data; the 587 are). Paired by rank of distance from the river, so the arcs nest (an arc
+  //      diagram) and the wide ones crest at the S09 crossing; all of them below the bay islands
+  const riverX = (y) => {
+    const Lr = W.river.line;
+    for (let k = 1; k < Lr.length; k++) if (Lr[k][1] >= y) { const [x0, y0] = Lr[k - 1], [x1, y1] = Lr[k]; return x0 + (x1 - x0) * (y - y0) / ((y1 - y0) || 1); }
+    return Lr[Lr.length - 1][0];
+  };
+  const atOf = new Map(tiles.map((t) => [t.d, t.at]));
+  const off = (p) => Math.abs(p.c[0] - riverX(p.c[1]));
+  const cand = (k) => products.filter((p) => p.isl === k && !p.members.some((L) => L.orphan) && p.c[1] > 572 && p.c[1] < 690
+    && off(p) > 50 && off(p) < 600).sort((a, b) => off(a) - off(b));
+  const NT = 12, cg_ = cand("g"), cf_ = cand("f");
+  if (cg_.length < NT || cf_.length < NT) throw new Error("s13: ties");
+  const pick = (arr) => Array.from({ length: NT }, (_, i) => arr[Math.round((i + 0.5) * arr.length / NT - 0.5)]);
+  const tg = pick(cg_), tf = pick(cf_);
+  const tieG = svgEl("g", {}, ringSvg), ties = [];
+  for (let i = 0; i < NT; i++) {
+    const a = tg[i].c, b = tf[i].c, yp = Math.max(Q[1] - 8, Math.min(a[1], b[1]) - 0.16 * Math.abs(b[0] - a[0]));
+    const c = [riverX(yp), 2 * yp - (a[1] + b[1]) / 2];
+    const d = `M${a[0].toFixed(1)},${a[1].toFixed(1)} Q${c[0].toFixed(1)},${c[1].toFixed(1)} ${b[0].toFixed(1)},${b[1].toFixed(1)}`;
+    // a casing of the sea under the aqua, so an arc still reads where it crosses the teal buildings
+    const glowP = svgEl("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 8, "stroke-opacity": 0.12 * T.halo, "stroke-linecap": "round" }, tieG);
+    const casing = svgEl("path", { d, fill: "none", stroke: T.sea, "stroke-width": 4.2, "stroke-opacity": 0.6, "stroke-linecap": "round" }, tieG);
+    const core = svgEl("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 1.8, "stroke-opacity": 0.95, "stroke-linecap": "round" }, tieG);
+    const ends = [a, b].map((p) => svgEl("circle", { cx: p[0], cy: p[1], r: 2.8, fill: T.inUse, stroke: T.sea, "stroke-width": 1.2 }, tieG));
+    const len = core.getTotalLength();
+    for (const p of [glowP, casing, core]) { p.setAttribute("stroke-dasharray", `${len.toFixed(1)} ${(len + 10).toFixed(1)}`); p.setAttribute("stroke-dashoffset", len.toFixed(1)); }
+    ties.push({ paths: [glowP, casing, core], ends, len, at: Math.max(atOf.get(tg[i].d), atOf.get(tf[i].d)) + 0.2 });
+  }
+  gsap.set(ties.flatMap((t) => t.ends), { autoAlpha: 0 });
+  for (const t of ties) {
+    tl.to(t.ends[0], { autoAlpha: 1, duration: 0.2 }, t.at);
+    tl.fromTo(t.paths, { attr: { "stroke-dashoffset": t.len } }, { attr: { "stroke-dashoffset": 0 }, duration: 0.7, ease: R.MOTION.beam, immediateRender: false }, t.at);
+    tl.to(t.ends[1], { autoAlpha: 1, duration: 0.2 }, t.at + 0.6);
+  }
+  // the count runs down from the 3,562 apps to the 1,208 products: each district, as it fuses, gives up the apps
+  // that are not a product of their own ("apps" leaves while it runs, "products" lands with it)
+  rise(tl, prod, T0 - 0.2);
+  {
+    const nprod = document.querySelector("#nprod"), o = { t: 0 };
+    nprod.textContent = fmt(N.apps);
+    tl.to(o, { t: DUR + 0.5, duration: DUR + 0.5, ease: "none", onUpdate: () => {
+      let s = N.apps;
+      for (const t of tiles) s -= (t.apps - t.prods) * sm((T0 + o.t - t.at) / FADE);
+      nprod.textContent = fmt(s);
+    } }, T0);
+  }
+  tl.to(uApps, { autoAlpha: 0, duration: 0.4, ease: "power1.in" }, T0 + 0.5);
+  tl.to(uProd, { autoAlpha: 1, duration: 0.5, ease: R.MOTION.rise }, T0 + DUR - 0.1);
+  rise(tl, eMulti, T0 + DUR + 0.3);
+  rise(tl, eSingle, T0 + DUR + 0.6);
+  // the bay islands and their rails step back: only the Apps pair is the subject now
+  tl.to(bayI, { autoAlpha: 1, duration: 0.9, ease: R.MOTION.light }, T0 + DUR - 0.2);
+  tl.to(h.layers.known, { autoAlpha: 0.4, duration: 0.9, ease: R.MOTION.light }, T0 + DUR - 0.2);
+  tl.addLabel("s1", T0 + DUR + 1.4);
+  // ---- s1 -> s2: the apps with no reload records in 4 months dim
+  tl.to(noneI, { autoAlpha: 1, duration: 1.0, ease: R.MOTION.light }, "s1");
+  rise(tl, eNone, "s1+=0.15");
+  tl.addLabel("s2", "s1+=1.2");
+  // ---- s2 -> s3: the city recedes (the S09 crossing, the second port and its bridges with it: no bright line may
+  //      leave the orange); the 800 generators are outlined, from the river outwards
+  tl.to(recI, { autoAlpha: 1, duration: 0.8, ease: R.MOTION.light }, "s2");
+  tl.to(tieG, { autoAlpha: 0, duration: 0.6, ease: R.MOTION.light }, "s2");
+  tl.to(h.layers.bridged, { autoAlpha: 0.28, duration: 0.8, ease: R.MOTION.light }, "s2");
+  const ox = Math.max(...otiles.map((t) => t.c[0])), ox0 = Math.min(...otiles.map((t) => t.c[0]));
+  otiles.forEach((t, i) => tl.to(otileI[i], { autoAlpha: 1, duration: 0.45, ease: R.MOTION.mark }, `s2+=${(0.3 + 1.0 * (ox - t.c[0]) / (ox - ox0)).toFixed(3)}`));
+  rise(tl, orph, "s2+=0.2");
+  countTo(tl, document.querySelector("#n800"), N.orphans, 1.2, "s2+=0.3");
+  tl.to(document.querySelector("#p44"), { autoAlpha: 1, duration: 0.3 }, "s2+=1.5");
+  tl.addLabel("s3", "s2+=1.9");
+  // ---- s3 -> s4: September's reloads; the outlined generators glow warm twice (the kitchen still cooks)
+  rise(tl, rel, "s3");
+  tl.to(document.querySelector("#bar"), { autoAlpha: 1, duration: 0.3 }, "s3");
+  tl.to(barAll, { scaleX: 1, duration: 1.0, ease: R.MOTION.slide }, "s3+=0.1");
+  tl.to(barOrph, { scaleX: 1, duration: 0.8, ease: R.MOTION.slide }, "s3+=0.7");
+  countTo(tl, document.querySelector("#nrel"), N.reloads, 1.0, "s3+=0.1");
+  countTo(tl, document.querySelector("#norel"), N.orphanReloads, 1.0, "s3+=0.7");
+  tl.to([document.querySelector("#p29"), document.querySelector("#pday")], { autoAlpha: 1, duration: 0.3 }, "s3+=1.7");
+  tl.to(glowI, { autoAlpha: 1, duration: 0.32, ease: "power1.inOut", yoyo: true, repeat: 3 }, "s3+=0.8");
+  tl.addLabel("s4", "s3+=2.4");
+  tl.set({}, {}, "s4");                                         // the timeline runs to its last label (?at=end)
+
+  await document.querySelector("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4"]);
+})();
+</script>
+</body>
+</html>

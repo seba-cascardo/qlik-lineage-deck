@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S16 · Who owns it? The Owners Dashboard</title>
+<!--
+  S16 (Task 11 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S16; world spec §4: the camera on one stream
+  district and its products). Nothing here is a real screen: the dashboard is in early construction, so the scene
+  shows what each owner WILL see, on the map itself.
+  Numbers: none from truth.json. The email's counts are illustrative and labelled so; they match what the owner's
+  view shows (7 apps nobody opens = the 7 dark parcels; 4 containers = the 4 in the lens). Which district
+  (WORLD.focus_stream), which apps are dark and which containers are the owner's are illustrative (seeded).
+    s0  S15's ground: camera apps, the city in "S09-end" and stepped back (dim), Generators and Front ends named
+    s1  owners on the map: every stream district's fence is drawn and gets its owner mark, half of them named
+        ("Ops is finding one"): S06's "owners: Ops, in progress"
+    s2  one stream: its owner is named, the camera dives to it (camera stream); its apps light up, used in
+        --in-use, the ones nobody opens left dark; "What each owner will see"
+    s3  its containers and files: a lens on the containers land, files used, unused and to review (--review)
+    s4  section access: everything that is not this owner's goes dark; a lock on the stream's fence
+    s5  the monthly email with the owner's action items (illustrative counts), each item pointing at the map
+    s6  "The dashboard won't make decisions for owners. It makes the missing decisions visible.": what nobody
+        has decided on yet is outlined, for the owner to review
+  End = camera stream (the contract's S16 cam), so S17 (stream -> full) starts where this ends.
+  "Early construction" is on screen at every step.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* headline ink from y 54, x 96 */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .txt { position: absolute; font-family: "Vodafone", system-ui, sans-serif; white-space: nowrap;
+    -webkit-font-smoothing: antialiased; font-variant-numeric: lining-nums tabular-nums; }
+
+  /* "Early construction": top right, its right edge on the 96 px margin, centred on the headline */
+  #pill { right: 96px; top: 53px; height: 46px; box-sizing: border-box; display: flex; align-items: center; gap: 12px;
+    padding: 0 20px 0 16px; border-radius: 23px; border: 2px solid color-mix(in srgb, var(--ink-faint) 75%, transparent);
+    background: color-mix(in srgb, var(--stage) 82%, transparent); font-size: 26px; line-height: 32px; font-weight: 500; color: var(--ink-dim); }
+  #pill svg { display: block; flex: none; }
+  .g-bar { fill: none; stroke: var(--ink-dim); stroke-width: 2; }
+  .g-hatch { stroke: var(--ink-dim); stroke-width: 3.2; }
+
+  /* s1's caption, under the headline (open sea at camera apps) */
+  #cap { left: 96px; top: 150px; }
+  #cap .c1 { font-size: 32px; line-height: 40px; font-weight: 700; color: var(--ink); }
+  #cap .c2 { margin-top: 6px; display: flex; align-items: center; gap: 10px; font-size: 26px; line-height: 32px; color: var(--ink-dim); }
+  #cap .c2 .sp { width: 26px; }
+  .g-ring { fill: color-mix(in srgb, var(--stage) 75%, transparent); stroke: var(--ink); stroke-opacity: 0.9; stroke-width: 2; }
+  .g-dot { fill: var(--ink); }
+
+  /* what each owner will see: the left column (x 96 - 640) */
+  #view { left: 96px; top: 150px; }
+  #view .v-h { font-size: 30px; line-height: 38px; font-weight: 400; color: var(--ink-dim); }
+  #view .row { margin-top: 34px; }
+  #view .r-t { display: flex; align-items: center; gap: 14px; font-size: 32px; line-height: 40px; font-weight: 700; color: var(--ink); }
+  #view .r-k { margin-top: 6px; margin-left: 46px; display: flex; align-items: center; gap: 10px; font-size: 26px; line-height: 32px;
+    font-weight: 400; color: var(--ink-dim); }
+  #view .r-k .sp { width: 18px; }
+  #view svg { display: block; flex: none; }
+  .sw { display: block; flex: none; width: 24px; height: 18px; border-radius: 3px; box-sizing: border-box; }
+  .sw-used { background: var(--in-use); }
+  .sw-off { background: var(--stage); border: 2px solid var(--ink-faint); }
+  /* "unused" in the lens = S11's three unused kinds (read only by apps nobody opens, written never read, no sign) */
+  .sw-unused { width: 30px; background: linear-gradient(90deg, var(--unused-apps) 33.3%, var(--never-read) 33.3% 66.7%, var(--no-sign) 66.7%); }
+  .sw-rev { border: 3px solid var(--review); }
+  .g-ink { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; }
+  .g-inkf { fill: var(--ink); }
+
+  /* the closing sentence, bottom left, on the dark the left plate leaves */
+  #os { left: 96px; top: 866px; }
+  #os .o1 { font-size: 36px; line-height: 46px; font-weight: 400; color: var(--ink-dim); }
+  #os .o2 { margin-top: 4px; font-size: 46px; line-height: 56px; font-weight: 700; color: var(--ink); }
+
+  /* the monthly email: a sheet of paper, top right, its right edge on the 96 px margin */
+  #mail { left: 1224px; top: 150px; width: 600px; box-sizing: border-box; padding: 24px 30px 22px; white-space: normal;
+    background: var(--paper); color: var(--paper-ink); border-radius: 10px;
+    border: 1.5px solid color-mix(in srgb, var(--paper-ink-faint) 35%, transparent);
+    box-shadow: 0 18px 40px color-mix(in srgb, var(--stage) 70%, transparent), 0 0 0 6px color-mix(in srgb, var(--stage) 55%, transparent); }
+  #mail .m-head { display: flex; align-items: center; gap: 12px; font-size: 24px; line-height: 30px; font-weight: 500; color: var(--paper-ink-dim); }
+  #mail .m-t { margin-top: 12px; font-size: 32px; line-height: 40px; font-weight: 700; color: var(--paper-ink); }
+  #mail ul { list-style: none; margin: 12px 0 0; padding: 0; }
+  #mail li { display: flex; align-items: flex-start; gap: 14px; margin-top: 10px; font-size: 26px; line-height: 32px; color: var(--paper-ink); }
+  #mail li b { font-weight: 700; }
+  #mail li .sw { margin-top: 7px; }
+  #mail .m-f { margin-top: 16px; padding-top: 12px; border-top: 1.5px solid color-mix(in srgb, var(--paper-ink-faint) 35%, transparent);
+    font-size: 24px; line-height: 30px; color: var(--paper-ink-faint); }
+  #mail svg { display: block; flex: none; }
+  .g-env { fill: none; stroke: var(--paper-ink-dim); stroke-width: 2.2; stroke-linejoin: round; }
+  /* "nobody opens" keeps the legend's swatch (the stage colour, as the dark parcels on the map); the third item has
+     no counterpart on the map, so a plain bullet, not a colour key */
+  .sw-pt { position: relative; }
+  .sw-pt::after { content: ""; position: absolute; left: 8px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--paper-ink-dim); }
+
+  /* the lens on the containers land */
+  #lens { position: absolute; border-radius: 50%; overflow: hidden; }
+  #lens img { position: absolute; left: 0; top: 0; }
+  /* the labels on the lit stream and the lens keep their plate on day too (world.css drops it on day: there they
+     sit on teal and on the lens rim, not on the grey land) */
+  [data-theme="day"] .w-label.s16-plated::before { content: ""; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">Who owns it? The Owners Dashboard</h1>
+  <div id="pill" class="txt"><svg width="30" height="20" viewBox="0 0 30 20"><defs><clipPath id="pc"><rect x="1" y="1" width="28" height="18" rx="3"/></clipPath></defs><g clip-path="url(#pc)"><path class="g-hatch" d="M2 22 L13 -2 M11 22 L22 -2 M20 22 L31 -2"/></g><rect class="g-bar" x="1" y="1" width="28" height="18" rx="3"/></svg>Early construction</div>
+  <div id="cap" class="txt">
+    <div class="c1">Every stream gets one accountable owner</div>
+    <div class="c2"><svg width="22" height="22" viewBox="0 0 22 22"><circle class="g-ring" cx="11" cy="11" r="9"/><circle class="g-dot" cx="11" cy="11" r="4.5"/></svg>owner named<span class="sp"></span><svg width="22" height="22" viewBox="0 0 22 22"><circle class="g-ring" cx="11" cy="11" r="9"/></svg>Ops is finding one</div>
+  </div>
+  <div id="view" class="txt">
+    <div class="v-h">What each owner will see</div>
+    <div class="row" id="r1">
+      <div class="r-t"><svg width="32" height="32" viewBox="0 0 32 32"><path class="g-ink" d="M4 7 L27 4 L28 27 L5 28 Z M5 16 L28 15 M15 5 L16 28"/></svg>Your streams and apps</div>
+      <div class="r-k"><i class="sw sw-used"></i>used<span class="sp"></span><i class="sw sw-off"></i>nobody opens</div>
+    </div>
+    <div class="row" id="r2">
+      <div class="r-t"><svg width="32" height="32" viewBox="0 0 32 32"><path class="g-ink" d="M4 6 L28 6 L28 26 L4 26 Z"/><g class="g-inkf"><rect x="8" y="10" width="4" height="4"/><rect x="14" y="10" width="4" height="4"/><rect x="20" y="10" width="4" height="4"/><rect x="8" y="18" width="4" height="4"/><rect x="14" y="18" width="4" height="4"/></g></svg>Your containers and files</div>
+      <div class="r-k"><i class="sw sw-used"></i>used<span class="sp"></span><i class="sw sw-unused"></i>unused<span class="sp"></span><i class="sw sw-rev"></i>to review</div>
+    </div>
+    <div class="row" id="r3">
+      <div class="r-t"><svg width="32" height="32" viewBox="0 0 32 32"><path class="g-ink" d="M10 14 L10 10 A6 6 0 0 1 22 10 L22 14"/><rect class="g-inkf" x="6" y="14" width="20" height="15" rx="3"/></svg>Only your own streams</div>
+      <div class="r-k">section access</div>
+    </div>
+  </div>
+  <div id="mail" class="txt">
+    <div class="m-head"><svg width="30" height="22" viewBox="0 0 30 22"><rect class="g-env" x="1.5" y="1.5" width="27" height="19" rx="2.5"/><path class="g-env" d="M2.5 3 L15 12.5 L27.5 3"/></svg>Monthly email · to each owner</div>
+    <div class="m-t">Your recommended action items</div>
+    <ul>
+      <li id="m1"><i class="sw sw-off"></i><span><b>7</b> apps nobody opens</span></li>
+      <li id="m2"><i class="sw sw-rev"></i><span>Files to review in <b>4</b> containers</span></li>
+      <li id="m3"><i class="sw sw-pt"></i><span><b>1</b> generator whose files all appear unused</span></li>
+    </ul>
+    <div class="m-f">Illustrative counts</div>
+  </div>
+  <div id="os" class="txt">
+    <div class="o1">The dashboard won't make decisions for owners.</div>
+    <div class="o2">It makes the missing decisions visible.</div>
+  </div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+const NS = "http://www.w3.org/2000/svg";
+document.querySelector("#icon").src = T.icon;
+
+// illustrative choices (the email's counts match them; the scene says "Illustrative counts")
+const FOCUS = W.focus_stream;                                   // the stream district the camera "stream" frames
+const OWN = ["On-prem:5", "On-prem:3", "On-prem:19", "On-prem:4"]; // the owner's containers, south of the stream
+const N_OFF = 7;                                                // apps nobody opens in this stream
+
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dOf = (poly) => "M" + poly.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" L") + " Z";
+function perim(poly) { let s = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; s += Math.hypot(q[0] - p[0], q[1] - p[1]); } return s; }
+const girth = (poly) => 2 * R.area(poly) / (perim(poly) || 1);
+// a polygon moved inward by d (S15's: each edge offset, consecutive offset lines intersected)
+function inset(poly, d) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  const s = a > 0 ? 1 : -1, n = poly.length, lines = [];
+  for (let i = 0; i < n; i++) {
+    const p = poly[i], q = poly[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L * s, ny = dx / L * s;
+    lines.push([[p[0] + nx * d, p[1] + ny * d], [dx, dy], [nx, ny]]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [p1, d1, n1] = lines[(i + n - 1) % n], [p2, d2, n2] = lines[i], v = poly[i];
+    const den = d1[0] * d2[1] - d1[1] * d2[0];
+    let q = null;
+    if (Math.abs(den) > 1e-6) {
+      const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
+      q = [p1[0] + d1[0] * t, p1[1] + d1[1] * t];
+    }
+    if (!q || Math.hypot(q[0] - v[0], q[1] - v[1]) > 2.5 * Math.abs(d)) {
+      const mx = n1[0] + n2[0], my = n1[1] + n2[1], L = Math.hypot(mx, my) || 1;
+      q = [v[0] + mx / L * d, v[1] + my / L * d];
+    }
+    out.push(q);
+  }
+  return out;
+}
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+(async () => {
+  // S15 ends on the Apps pair, stepped back under a veil: S16 starts there
+  const h = await WorldStage.mount(document.querySelector("#ws"), { cam: "apps", state: "S09-end" });
+  h.setState("dim");
+  gsap.set(h.layers.owners, { autoAlpha: 0 });                 // world units: hidden at zoom > 1 (brief §3)
+  const KEEP = ["generators", "frontends"];
+  for (const [id, el] of h.labels) if (!KEEP.includes(id)) gsap.set(el, { autoAlpha: 0 });
+  const names = KEEP.map((id) => h.labels.get(id));
+  const wsEl = document.querySelector("#ws");
+
+  // ---- the focus stream: its district, its parcels (apps), its owner's place
+  const Dst = R.district(FOCUS);
+  if (!Dst) throw new Error(`s16: unknown focus stream ${FOCUS}`);
+  const isl = W.apps[Dst.island], si = isl.streams.findIndex((s) => s.id === FOCUS);
+  const apps = isl.parcels.filter((p) => p.s === si);
+  const own = h.owners.get(FOCUS);
+  if (!own) throw new Error("s16: the focus stream has no owner mark");
+  const VS = R.camera("stream");
+  const toS = (p) => [VS.x + VS.scale * p[0], VS.y + VS.scale * p[1]];
+  const sPoly = Dst.poly.map(toS);
+  const OP = toS(own.at);                                       // the owner mark, stage px at camera stream
+
+  // ---- the stream at camera stream's resolution (the default map is res 2: soft at 3.5), faded in late in the dolly
+  const hrRect = R.camRect("stream", 160), HR = 3.5;
+  const hc = document.createElement("canvas");
+  hc.width = Math.round(hrRect.w * HR); hc.height = Math.round(hrRect.h * HR);
+  hc.className = "s16-hires";
+  hc.style.cssText = `position:absolute;display:block;left:${hrRect.x}px;top:${hrRect.y}px;width:${hrRect.w}px;height:${hrRect.h}px`;
+  R.map(hc.getContext("2d", { alpha: false }), hrRect, HR, { known: true });
+  h.world.insertBefore(hc, h.svg);
+
+  // ---- world-unit overlay (moves with the camera): the fences of every stream, pings, the spotlight, the focus fence
+  const wv = svgEl("svg", { class: "s16-world", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, h.world);
+  wv.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  const fences = [];
+  for (const key of ["generators", "frontends"]) for (const s of W.apps[key].streams) {
+    fences.push(svgEl("path", { d: dOf(s.poly), fill: "none", stroke: T.rgba(T.ink, 0.5), "stroke-width": 1.9, "stroke-linejoin": "round" }, wv));
+  }
+  const fenceW0 = 2.5 / (R.camera("apps").scale), fenceW1 = 2.5 / VS.scale;
+  const focusFence = svgEl("path", { d: dOf(Dst.poly), fill: "none", stroke: T.rgb(T.ink), "stroke-width": fenceW0.toFixed(3), "stroke-linejoin": "round" }, wv);
+  // the owner marks of this scene: the shared marks' ring and dot (stage.js), larger, so "one person per stream"
+  // reads at 720p; named = the same half S06-S09 show (h.ownerOrder), the focus stream is named at s1 -> s2
+  const OWNR = 11, named = new Set(h.ownerOrder.slice(0, Math.round(0.5 * h.ownerOrder.length)));
+  // these rings are larger than the shared ones: a ring that would come within CLEAR px of the "Generators" or
+  // "Front ends" plate (stage px at camera apps) moves to the nearest free spot inside its own district
+  const VA = R.camera("apps"), CLEAR = 30;                       // the plate's soft shadow reaches ~18 px past its box
+  const plates = names.map((el) => {
+    const L = el.__L, w = el.offsetWidth, ht = el.offsetHeight;
+    const x = VA.x + VA.scale * L.at[0] - L.ax * w, y = VA.y + VA.scale * L.at[1] - L.ay * ht;
+    return [x - 10, y - 2, x + w + 10, y + ht + 2];
+  });
+  const plateGap = (p) => Math.min(...plates.map((r) => {
+    const sx = VA.x + VA.scale * p[0], sy = VA.y + VA.scale * p[1];
+    return Math.hypot(Math.max(r[0] - sx, 0, sx - r[2]), Math.max(r[1] - sy, 0, sy - r[3]));
+  })) - OWNR * VA.scale;
+  const segD = (p, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  };
+  const edgeD = (p, poly) => Math.min(...poly.map((a, i) => segD(p, a, poly[(i + 1) % poly.length])));
+  const markAt = new Map([...h.owners.entries()].map(([id, o]) => [id, o.at]));
+  for (const [id, at] of markAt) {
+    if (id === FOCUS || plateGap(at) >= CLEAR) continue;
+    const poly = R.district(id).poly, b = R.bb(poly);
+    // nearest point that is clear; in a district too tight for that, the point furthest from the plates
+    let bestQ = null, bestD = 1e9, farQ = null, farG = plateGap(at);
+    for (let y = Math.ceil(b[1]); y <= b[3]; y += 1) for (let x = Math.ceil(b[0]); x <= b[2]; x += 1) {
+      const q = [x, y];
+      if (!R.inside(q, poly) || edgeD(q, poly) < OWNR + 3) continue;
+      if ([...markAt].some(([k, o]) => k !== id && Math.hypot(o[0] - x, o[1] - y) < 2 * OWNR + 8)) continue;
+      const d = Math.hypot(x - at[0], y - at[1]), gp = plateGap(q);
+      if (gp >= CLEAR && d < bestD) { bestQ = q; bestD = d; }
+      if (gp > farG) { farQ = q; farG = gp; }
+    }
+    if (bestQ || farQ) markAt.set(id, bestQ || farQ);
+  }
+  const marks = [...h.owners.entries()].map(([id, o]) => {
+    const at = markAt.get(id), cx = at[0].toFixed(1), cy = at[1].toFixed(1);
+    const g = svgEl("g", { "data-owner": id }, wv);
+    const ring = svgEl("circle", { cx, cy, r: OWNR, fill: T.rgba(T.sea, 0.75), stroke: T.rgba(T.ink, 0.9), "stroke-width": 2 }, g);
+    const dot = svgEl("circle", { cx, cy, r: 5, fill: T.rgb(T.ink) }, g);
+    const ping = svgEl("circle", { cx, cy, r: OWNR, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 1.6 }, wv);
+    return { id, o, at, g, ring, dot, ping, named: named.has(id) };
+  }).sort((a, b) => a.at[0] - b.at[0]);
+  const fm = marks.find((m) => m.id === FOCUS);
+  const foundPing = svgEl("circle", { cx: own.at[0].toFixed(1), cy: own.at[1].toFixed(1), r: OWNR, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 2 }, wv);
+
+  // ---- the left plate: a dithered pool of the stage under the left column and the closing sentence
+  const pc = document.createElement("canvas");
+  pc.width = 960; pc.height = 540;
+  {
+    const g = pc.getContext("2d"), id = g.createImageData(pc.width, pc.height), d = id.data, rnd = R.mulberry32(1616);
+    const [sr, sg, sb] = T.channels(T.stage);
+    for (let y = 0; y < pc.height; y++) for (let x = 0; x < pc.width; x++) {
+      const X = x * 2, Y = y * 2;
+      const aL = 1 - smooth(600, 800, X), aB = smooth(780, 880, Y) * (1 - smooth(1020, 1240, X));
+      const a = 0.8 * Math.max(aL, aB);
+      const i = (y * pc.width + x) * 4;
+      d[i] = sr; d[i + 1] = sg; d[i + 2] = sb;
+      d[i + 3] = Math.max(0, Math.min(255, Math.round(a * 255 + (rnd() - 0.5) * 2)));
+    }
+    g.putImageData(id, 0, 0);
+  }
+  pc.className = "s16-plate";
+  pc.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none";
+  // the spotlight (stage px, camera stream): everything but this stream steps back; a hole 2 px wider than its fence
+  const spotSvg = svgEl("svg", { class: "s16-spot", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, wsEl);
+  spotSvg.style.cssText = "position:absolute;left:0;top:0;pointer-events:none";
+  wsEl.insertBefore(spotSvg, h.labelsEl);
+  const spot = svgEl("path", { d: "M-20,-20 H1940 V1100 H-20 Z " + dOf(inset(Dst.poly, -2 / VS.scale).map(toS)), "fill-rule": "evenodd", fill: T.rgb(T.stage) }, spotSvg);
+  wsEl.insertBefore(pc, h.labelsEl);
+
+  // ---- which apps nobody opens (illustrative, seeded): readable parcels, clear of the owner mark
+  const rnd = R.mulberry32(1616);
+  const pool = apps.filter((p) => girth(p.p) >= 4.2 && Math.hypot(p.c[0] - own.at[0], p.c[1] - own.at[1]) > 16)
+    .map((p) => [rnd(), p]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const off = [];
+  for (const p of pool) {
+    if (off.length === N_OFF) break;
+    if (off.every((o) => Math.hypot(o.c[0] - p.c[0], o.c[1] - p.c[1]) >= 22)) off.push(p);
+  }
+  if (off.length !== N_OFF) throw new Error("s16: could not place the apps nobody opens");
+  const isOff = new Set(off.map((p) => p.id));
+
+  // ---- screen overlay A (camera stream, under the lens): the stream's apps, its bloom, the link, the owner, the lock
+  const ovA = svgEl("svg", { class: "s16-ov", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, wsEl);
+  ovA.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  wsEl.insertBefore(ovA, h.labelsEl);
+  const dist = (p) => Math.hypot(p.c[0] - own.at[0], p.c[1] - own.at[1]);
+  const dMax = Math.max(...apps.map(dist));
+  const shade = R.mulberry32(53);
+  const lit = apps.map((p) => {
+    const sp = p.p.map(toS), offp = isOff.has(p.id);
+    const el = svgEl("path", { d: dOf(sp), fill: offp ? T.rgb(T.stage) : T.rgb(T.inUse), "fill-opacity": offp ? 0.66 : (0.36 + 0.32 * shade()).toFixed(2) }, ovA);
+    return { p, el, off: offp, at: 0.9 * dist(p) / dMax };
+  });
+  // the bloom of the used apps (frozen), stage px
+  const sb = R.bb(sPoly), bRect = { x: Math.floor(sb[0]) - 60, y: Math.floor(sb[1]) - 60, w: Math.ceil(sb[2] - sb[0]) + 120, h: Math.ceil(sb[3] - sb[1]) + 120 };
+  const bc = document.createElement("canvas");
+  bc.width = Math.round(bRect.w * 1.5); bc.height = Math.round(bRect.h * 1.5); bc.className = "s16-bloom";
+  bc.style.cssText = `position:absolute;left:${bRect.x}px;top:${bRect.y}px;width:${bRect.w}px;height:${bRect.h}px;pointer-events:none`;
+  R.bloomCells(bc.getContext("2d"), lit.filter((l) => !l.off).map((l) => l.p.p.map(toS)), T.inUse, 0.6, 16, bRect, 1.5);
+  wsEl.insertBefore(bc, h.labelsEl);
+  // the 7 dark ones: pings (s5) and their --review outlines (s6)
+  const offEls = lit.filter((l) => l.off).map((l) => {
+    const c = toS(l.p.c);
+    const ping = svgEl("circle", { cx: c[0].toFixed(1), cy: c[1].toFixed(1), r: 10, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 2.5 }, ovA);
+    const rim = svgEl("path", { d: dOf(inset(l.p.p, 1.2).map(toS)), fill: "none", stroke: T.rgb(T.review), "stroke-width": 3.4, "stroke-linejoin": "round" }, ovA);
+    return { ping, rim };
+  });
+
+  // the owner (stage px): a ring with a person, the mark S06 drew, named
+  const og = svgEl("g", { transform: `translate(${OP[0].toFixed(1)},${OP[1].toFixed(1)})` }, ovA);
+  const ownMark = svgEl("g", {}, og);
+  svgEl("circle", { r: 27, fill: T.rgba(T.stage, 0.85), stroke: T.rgb(T.ink), "stroke-width": 2.6 }, ownMark);
+  svgEl("circle", { cx: 0, cy: -7, r: 7, fill: T.rgb(T.ink) }, ownMark);
+  svgEl("path", { d: "M-13,15 C-13,4 -6,1 0,1 C6,1 13,4 13,15 Z", fill: T.rgb(T.ink) }, ownMark);
+  const ownLabel = document.createElement("div");
+  ownLabel.className = "w-at w-label s16-plated";
+  ownLabel.innerHTML = "<b>Stream<br>owner</b>";               // two lines: on one, its plate touched the east fence
+  h.labelsEl.appendChild(ownLabel);
+  ownLabel.style.transform = `translate(${(OP[0] + 42).toFixed(1)}px,${(OP[1] - ownLabel.offsetHeight / 2).toFixed(1)}px)`;
+
+  // the lock (s4): on the fence's top edge, the longest edge above the centre that is clear of the owner
+  const cen = R.centroid(sPoly);
+  let lockAt = null, best = -1;
+  for (let i = 0; i < sPoly.length; i++) {
+    const a = sPoly[i], b = sPoly[(i + 1) % sPoly.length], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (m[1] < cen[1] && L > best) {
+      // slide along the edge away from the owner mark if they would touch
+      let t = 0.5;
+      const at = (u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+      while (t < 0.85 && Math.hypot(at(t)[0] - OP[0], at(t)[1] - OP[1]) < 90) t += 0.05;
+      best = L; lockAt = at(t);
+    }
+  }
+  const lg = svgEl("g", { transform: `translate(${lockAt[0].toFixed(1)},${lockAt[1].toFixed(1)})` }, ovA);
+  const lock = svgEl("g", {}, lg);
+  svgEl("circle", { r: 30, fill: T.rgba(T.stage, 0.9), stroke: T.rgb(T.ink), "stroke-width": 2.6 }, lock);
+  const shackle = svgEl("path", { d: "M-8,-2 L-8,-8 A8,8 0 0 1 8,-8 L8,-2", fill: "none", stroke: T.rgb(T.ink), "stroke-width": 3.4, "stroke-linecap": "round" }, lock);
+  svgEl("rect", { x: -12, y: -3, width: 24, height: 18, rx: 3, fill: T.rgb(T.ink) }, lock);
+  svgEl("circle", { cx: 0, cy: 5, r: 2.6, fill: T.rgb(T.stage) }, lock);
+  const lockPing = svgEl("circle", { r: 30, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 2 }, lg);
+
+  // ---- the lens on the containers land: the owner's containers, magnified, south of the stream
+  const LR = 196, LC = [1824 - LR, 738];                        // the rim's right edge on the 96 px margin                             // stage px: centre, radius
+  const cts = OWN.map((id) => W.land.containers.find((c) => c.id === id));
+  if (cts.some((c) => !c)) throw new Error("s16: an owner container is missing from WORLD.land");
+  const ownSet = new Set(OWN);
+  let ub = [1e9, 1e9, -1e9, -1e9];
+  for (const c of cts) { const q = R.bb(c.poly); ub = [Math.min(ub[0], q[0]), Math.min(ub[1], q[1]), Math.max(ub[2], q[2]), Math.max(ub[3], q[3])]; }
+  const LW = [(ub[0] + ub[2]) / 2, (ub[1] + ub[3]) / 2], LZ = LR / (0.5 * Math.max(ub[2] - ub[0], ub[3] - ub[1]) + 7);   // stage px per world unit (the corners may clip)
+  const lRect = { x: LW[0] - LR / LZ, y: LW[1] - LR / LZ, w: 2 * LR / LZ, h: 2 * LR / LZ }, Z = 2 * LZ;  // canvas px per world unit
+  const toL = (p) => [LC[0] + (p[0] - LW[0]) * LZ, LC[1] + (p[1] - LW[1]) * LZ];  // world -> stage px in the lens
+  const lens = document.createElement("div");
+  lens.id = "lens";
+  lens.style.cssText = `left:${LC[0] - LR}px;top:${LC[1] - LR}px;width:${2 * LR}px;height:${2 * LR}px`;
+  wsEl.insertBefore(lens, h.labelsEl);
+  const lcv = () => { const c = document.createElement("canvas"); c.width = c.height = 2 * LR * 2; c.style.cssText = `width:${2 * LR}px;height:${2 * LR}px`; lens.appendChild(c); return c; };
+  // the map itself, magnified (the land dark, as the city shows it)
+  const lBase = lcv();
+  R.map(lBase.getContext("2d", { alpha: false }), lRect, Z, { known: true });
+  // the owner's files by use (S11's materials)
+  const CATC = { valid: T.inUse, unused_apps: T.unusedApps, never_read: T.neverRead, no_sign: T.noSign };
+  const MAT = { valid: { lum: 0.5, g: 0.15 }, unused_apps: { lum: 0.6, g: 0.22 }, never_read: { lum: 0.5, g: 0.2 }, no_sign: { lum: 0.4, g: 0.26 } };
+  const STG = T.channels(T.stage);
+  const mix = (c, k) => T.channels(c).map((v, i) => Math.max(0, Math.min(255, Math.round(v * k + STG[i] * (1 - k)))));
+  const GRAIN = { minTile: 3.4 * Z, minGrain: 2.0 * Z, gap: 0.8 * Z, gapK: 0.32, dotK: 0.5, cover: 0.7, jx: 0.5, jy: 0.08 };
+  const mat = (u) => Object.assign({ ground: T.rgb(mix(CATC[u], MAT[u].g)), rgb: T.channels(CATC[u]).join(","), lum: MAT[u].lum, add: false }, GRAIN);
+  const lxf = (p) => [(p[0] - lRect.x) * Z, (p[1] - lRect.y) * Z];
+  // the neighbours' files, in the same materials, shown faint at s3 so that section access (s4) visibly takes them away
+  const lOth = lcv();
+  R.land(lOth.getContext("2d"), { xf: lxf, s: Z, gap: R.HAIR * Z, terrGap: 3.4 * Z, gapColor: T.lit.gap, only: (ct) => !ownSet.has(ct.id), style: (cl) => mat(cl.u) });
+  const lCat = lcv();
+  {
+    const g = lCat.getContext("2d");
+    R.land(g, { xf: lxf, s: Z, gap: R.HAIR * Z, terrGap: 3.4 * Z, gapColor: T.lit.gap, only: (ct) => ownSet.has(ct.id), style: (cl) => mat(cl.u) });
+    for (const c of cts) { R.path(g, c.poly, lxf); g.lineWidth = 2.2 * 2; g.strokeStyle = T.rgba(T.ink, 0.75); g.stroke(); }
+    R.bloomCells(g, cts.flatMap((c) => c.cells.filter((cl) => cl.u === "valid").map((cl) => cl.poly)), T.inUse, 0.5, 10, lRect, Z);
+  }
+  // screen overlay B (above the lens): its rim, its veil (s4), the files to review (S11's first round)
+  const ovB = svgEl("svg", { class: "s16-ovb", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, wsEl);
+  ovB.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  wsEl.insertBefore(ovB, h.labelsEl);
+  const clip = svgEl("clipPath", { id: "lensclip" }, svgEl("defs", {}, ovB));
+  svgEl("circle", { cx: LC[0], cy: LC[1], r: LR }, clip);
+  const inLens = svgEl("g", { "clip-path": "url(#lensclip)" }, ovB);
+  const lensVeil = svgEl("path", { d: `M${LC[0] - LR},${LC[1] - LR} h${2 * LR} v${2 * LR} h${-2 * LR} Z ` + cts.map((c) => dOf(c.poly.map(toL))).join(" "),
+    "fill-rule": "evenodd", fill: T.rgb(T.stage) }, inLens);
+  const isRound = (cl) => cl.part === "old" && (cl.u === "unused_apps" || cl.u === "no_sign");
+  const revCells = cts.flatMap((c) => c.cells.filter(isRound).filter((cl) => R.area(cl.poly) * LZ * LZ > 300));
+  const revEls = revCells.map((cl) => svgEl("path", { d: dOf(inset(cl.poly, 1.4 / LZ * 1.2).map(toL)), fill: "none", stroke: T.rgb(T.review), "stroke-width": 3, "stroke-linejoin": "round" }, inLens));
+  const ctPings = cts.map((c) => { const q = toL(R.centroid(c.poly)); return svgEl("circle", { cx: q[0].toFixed(1), cy: q[1].toFixed(1), r: 12, fill: "none", stroke: T.rgb(T.review), "stroke-width": 2.5 }, inLens); });
+  const lensShade = svgEl("circle", { cx: LC[0], cy: LC[1], r: LR + 4, fill: "none", stroke: T.rgba(T.stage, 0.8), "stroke-width": 8 }, ovB);
+  const lensRim = svgEl("circle", { cx: LC[0], cy: LC[1], r: LR, fill: "none", stroke: T.rgb(T.inkFaint), "stroke-width": 2.5 }, ovB);
+  // the link from the stream to its containers (the land is south of it)
+  const sv = sPoly.reduce((m, p) => (p[0] + 0.6 * p[1] > m[0] + 0.6 * m[1] ? p : m), sPoly[0]);
+  const ang = Math.atan2(sv[1] - LC[1], sv[0] - LC[0]), le = [LC[0] + (LR + 10) * Math.cos(ang), LC[1] + (LR + 10) * Math.sin(ang)];
+  const s0 = [sv[0] + 10, sv[1] + 4];
+  const ctl = [(s0[0] + le[0]) / 2, Math.max(s0[1], le[1]) + 40];
+  const linkD = `M${s0[0].toFixed(1)},${s0[1].toFixed(1)} Q${ctl[0].toFixed(1)},${ctl[1].toFixed(1)} ${le[0].toFixed(1)},${le[1].toFixed(1)}`;
+  const lm = svgEl("mask", { id: "linkmask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: 1920, height: 1080 }, svgEl("defs", {}, ovA));
+  lm.style.maskType = "alpha";                                   // a luminance mask in --ink hid most of the link on day
+  const link = svgEl("path", { d: linkD, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 10, "stroke-linecap": "round" }, lm);   // the mask: drawn on
+  // on day the link nearly vanished at 720p (the luminance mask above, now alpha); a little thicker there too
+  const DAY = T.name === "day", linkC = T.rgb(T.inkDim);
+  svgEl("path", { d: linkD, fill: "none", stroke: linkC, "stroke-width": DAY ? 2.8 : 2.4, "stroke-dasharray": "9 7", "stroke-linecap": "round", mask: "url(#linkmask)" }, ovA);
+  const linkDot = svgEl("circle", { cx: s0[0].toFixed(1), cy: s0[1].toFixed(1), r: 5, fill: linkC }, ovA);
+  const lensTag = document.createElement("div");
+  lensTag.className = "w-at w-label s16-plated";
+  lensTag.innerHTML = "<b>Containers land</b>";
+  h.labelsEl.appendChild(lensTag);
+  lensTag.style.transform = `translate(${(LC[0] - lensTag.offsetWidth / 2).toFixed(1)}px,${(LC[1] - LR - lensTag.offsetHeight / 2).toFixed(1)}px)`;
+
+  // ---- section access (s4): the dark spreads from the lock over everything that is not this owner's. A second
+  // spotlight, revealed by a soft-edged circle that grows from the lock (mask-type alpha: the colour is irrelevant)
+  const wdefs = svgEl("defs", {}, spotSvg);
+  const wg = svgEl("radialGradient", { id: "s16wg" }, wdefs);
+  svgEl("stop", { offset: "0.78", "stop-color": T.rgb(T.stage), "stop-opacity": 1 }, wg);
+  svgEl("stop", { offset: "1", "stop-color": T.rgb(T.stage), "stop-opacity": 0 }, wg);
+  const wm = svgEl("mask", { id: "s16wave", maskUnits: "userSpaceOnUse", x: -20, y: -20, width: 1960, height: 1120 }, wdefs);
+  wm.style.maskType = "alpha";
+  const wave = svgEl("circle", { cx: lockAt[0].toFixed(1), cy: lockAt[1].toFixed(1), r: 1, fill: "url(#s16wg)" }, wm);
+  const WAVE_R = Math.ceil(Math.max(...[[0, 0], [1920, 0], [0, 1080], [1920, 1080]].map((c) => Math.hypot(c[0] - lockAt[0], c[1] - lockAt[1]))) / 0.78) + 40;
+  const spot2 = svgEl("path", { d: spot.getAttribute("d"), "fill-rule": "evenodd", fill: T.rgb(T.stage), mask: "url(#s16wave)" }, spotSvg);
+
+  // ---- the headline's own ground: from the dolly on, the lit city passes under it (dithered: a CSS gradient this
+  // dark bands on the GPU)
+  const sc = document.createElement("canvas");
+  sc.width = 960; sc.height = 130;
+  {
+    const g = sc.getContext("2d"), id = g.createImageData(sc.width, sc.height), d = id.data, rnd2 = R.mulberry32(1618);
+    const [sr, sg, sb] = T.channels(T.stage);
+    for (let y = 0; y < sc.height; y++) for (let x = 0; x < sc.width; x++) {
+      const a = 0.88 * (1 - smooth(116, 252, y * 2)), i = (y * sc.width + x) * 4;
+      d[i] = sr; d[i + 1] = sg; d[i + 2] = sb;
+      d[i + 3] = Math.max(0, Math.min(255, Math.round(a * 255 + (rnd2() - 0.5) * 2)));
+    }
+    g.putImageData(id, 0, 0);
+  }
+  sc.className = "s16-scrim";
+  sc.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:260px;pointer-events:none";
+  wsEl.insertBefore(sc, h.labelsEl);
+
+  // ---- freeze every canvas before Scene.init
+  const [hires, plate, bloom, lensBase, lensOth, lensCat, scrim] = await R.freeze([hc, pc, bc, lBase, lOth, lCat, sc]);
+
+  // ---- s0: the state before the first click
+  const cap = document.querySelector("#cap"), view = document.querySelector("#view");
+  const vh = view.querySelector(".v-h"), rows = ["#r1", "#r2", "#r3"].map((s) => view.querySelector(s));
+  const mail = document.querySelector("#mail"), mItems = ["#m1", "#m2", "#m3"].map((s) => mail.querySelector(s)), mFoot = mail.querySelector(".m-f");
+  const os1 = document.querySelector("#os .o1"), os2 = document.querySelector("#os .o2");
+  gsap.set([cap, vh, ...rows, os1, os2], { autoAlpha: 0, y: 14 });
+  gsap.set(view, { autoAlpha: 1 });
+  gsap.set(mail, { autoAlpha: 0, y: 36 });
+  gsap.set([...mItems, mFoot], { autoAlpha: 0, x: -10 });
+  gsap.set(fences, { autoAlpha: 0, drawSVG: "0%" });
+  gsap.set([...marks.map((m) => m.ping), foundPing, spot, spot2, scrim, hires, plate, bloom, ownMark, ownLabel, lockPing, linkDot, lensTag, lensVeil, lensRim, lensShade, lensOth, lensCat], { autoAlpha: 0 });
+  marks.forEach((m) => {
+    gsap.set(m.g, { scale: 0, svgOrigin: `${m.at[0].toFixed(1)} ${m.at[1].toFixed(1)}` });
+    gsap.set(m.dot, { autoAlpha: m.named ? 1 : 0 });
+  });
+  gsap.set(focusFence, { autoAlpha: 0 });
+  gsap.set(lit.map((l) => l.el), { autoAlpha: 0 });
+  gsap.set(offEls.map((o) => o.ping), { autoAlpha: 0 });
+  gsap.set(offEls.map((o) => o.rim), { autoAlpha: 0, drawSVG: "0%" });
+  gsap.set(revEls, { autoAlpha: 0, drawSVG: "0%" });
+  gsap.set(ctPings, { autoAlpha: 0 });
+  gsap.set(lock, { autoAlpha: 0, y: -26 });
+  gsap.set(shackle, { y: -6 });
+  gsap.set(ownMark, { scale: 0.85, transformOrigin: "0px 0px" });
+  gsap.set(lens, { clipPath: `circle(0px at ${LR}px ${LR}px)` });
+  gsap.set(link, { drawSVG: "0%" });
+  const rise = (tl, el, at, d = 0.7) => tl.to(el, { autoAlpha: 1, y: 0, duration: d, ease: R.MOTION.rise }, at);
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  // s0 -> s1: the fences of every stream, then one owner mark each (half named)
+  tl.to(h.veil, { autoAlpha: 0.32, duration: 1.0, ease: R.MOTION.light }, "s0");
+  // a seeded shuffle (GSAP's from:"random" shuffles with Math.random: a different order on every load)
+  const fOrder = fences.slice(), frnd = R.mulberry32(1617);
+  for (let i = fOrder.length - 1; i > 0; i--) { const j = Math.floor(frnd() * (i + 1)); [fOrder[i], fOrder[j]] = [fOrder[j], fOrder[i]]; }
+  tl.to(fOrder, { autoAlpha: 1, drawSVG: "100%", duration: 0.9, ease: "power1.inOut", stagger: 0.012 }, "s0+=0.1");
+  const MS = 0.9 / marks.length;                                // the marks arrive west -> east
+  tl.to(marks.map((m) => m.g), { scale: 1, duration: 0.45, ease: "back.out(2)", stagger: MS }, "s0+=0.75");
+  tl.fromTo(marks.map((m) => m.ping), { autoAlpha: 0.9, attr: { r: OWNR } }, { autoAlpha: 0, attr: { r: 30 }, duration: 0.7, ease: "power2.out", stagger: MS, immediateRender: false }, "s0+=0.8");
+  rise(tl, cap, "s0+=0.3");
+  tl.addLabel("s1", "s0+=2.4");
+
+  // s1 -> s2: this stream's owner is named, the camera dives to it; its apps light from the owner outward
+  const D0 = 0.6, DOLLY = 1.8;                                 // the dolly starts at s1 + D0
+  tl.to(cap, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, "s1");
+  tl.to(scrim, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s1");   // before the city slides under the headline
+  tl.to(names, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, "s1");
+  tl.to(fm.dot, { autoAlpha: 1, duration: 0.3, ease: R.MOTION.mark }, "s1+=0.05");
+  tl.fromTo(foundPing, { autoAlpha: 1, attr: { r: OWNR } }, { autoAlpha: 0, attr: { r: 40 }, duration: 0.8, ease: "power2.out", immediateRender: false }, "s1+=0.05");
+  tl.to(focusFence, { autoAlpha: 1, duration: 0.4, ease: R.MOTION.light }, "s1+=0.1");
+  tl.to(fences, { autoAlpha: 0, duration: 0.6, ease: "power1.out" }, `s1+=${D0}`);
+  tl.to(h.world, { ...R.camera("stream"), duration: DOLLY, ease: R.MOTION.dolly }, `s1+=${D0}`);
+  tl.to(focusFence, { attr: { "stroke-width": fenceW1 }, duration: DOLLY, ease: R.MOTION.dolly }, `s1+=${D0}`);
+  // the other marks would grow with the camera (world units): they leave; this stream's ring shrinks in world units
+  // as the camera closes in, so it lands at the size of the owner's mark (r 27 stage px)
+  tl.to(marks.filter((m) => m !== fm).map((m) => m.g), { autoAlpha: 0, duration: 0.6, ease: "power1.in" }, `s1+=${D0 + 0.05}`);
+  tl.to(fm.ring, { attr: { r: 27 / VS.scale, "stroke-width": 2.6 / VS.scale }, duration: DOLLY, ease: R.MOTION.dolly }, `s1+=${D0}`);
+  tl.to(fm.dot, { attr: { r: 5 / VS.scale * 1.6 }, duration: DOLLY, ease: R.MOTION.dolly }, `s1+=${D0}`);
+  tl.to(hires, { autoAlpha: 1, duration: 0.45, ease: "power1.inOut" }, `s1+=${(D0 + 0.62 * DOLLY).toFixed(3)}`);
+  const L0 = D0 + DOLLY - 0.05;                                  // landed
+  tl.to(ownMark, { autoAlpha: 1, scale: 1, duration: 0.55, ease: "back.out(1.6)" }, `s1+=${L0}`);
+  tl.to(fm.g, { autoAlpha: 0, duration: 0.3, ease: "power1.out" }, `s1+=${(L0 + 0.1).toFixed(3)}`);
+  // the stream comes into focus: the even dim lifts off it and stays (deeper) on the rest
+  tl.to(h.veil, { autoAlpha: 0, duration: 0.8, ease: R.MOTION.light }, `s1+=${L0}`);
+  tl.to(spot, { autoAlpha: 0.52, duration: 0.8, ease: R.MOTION.light }, `s1+=${L0}`);
+  lit.forEach((l) => tl.to(l.el, { autoAlpha: 1, duration: l.off ? 0.3 : 0.35, ease: R.MOTION.kindle }, `s1+=${(L0 + 0.15 + l.at).toFixed(3)}`));
+  tl.to(bloom, { autoAlpha: 1, duration: 0.8, ease: R.MOTION.light }, `s1+=${(L0 + 0.7).toFixed(3)}`);
+  tl.to(plate, { autoAlpha: 1, duration: 0.8, ease: R.MOTION.light }, `s1+=${(L0 - 0.4).toFixed(3)}`);
+  tl.to(ownLabel, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, `s1+=${(L0 + 0.35).toFixed(3)}`);   // labels fade, never move
+  rise(tl, vh, `s1+=${(L0 + 0.2).toFixed(3)}`);
+  rise(tl, rows[0], `s1+=${(L0 + 0.45).toFixed(3)}`);
+  tl.addLabel("s2", `s1+=${(L0 + 1.45).toFixed(3)}`);
+
+  // s2 -> s3: its containers and files, through a lens on the containers land
+  tl.to(linkDot, { autoAlpha: 1, duration: 0.2, ease: "power1.out" }, "s2");
+  tl.to(link, { drawSVG: "100%", duration: 0.6, ease: R.MOTION.travel }, "s2");
+  tl.to([lensShade, lensRim], { autoAlpha: 1, duration: 0.3, ease: "power1.out" }, "s2+=0.45");
+  tl.fromTo(lensRim, { drawSVG: "50% 50%" }, { drawSVG: "0% 100%", duration: 0.7, ease: R.MOTION.lens, immediateRender: false }, "s2+=0.45");
+  tl.to(lens, { clipPath: `circle(${LR}px at ${LR}px ${LR}px)`, duration: 0.8, ease: R.MOTION.lens }, "s2+=0.5");
+  tl.to(lensTag, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s2+=0.7");
+  tl.to(lensCat, { autoAlpha: 1, duration: 0.7, ease: R.MOTION.light }, "s2+=1.1");
+  tl.to(lensOth, { autoAlpha: 0.42, duration: 0.7, ease: R.MOTION.light }, "s2+=1.1");
+  rise(tl, rows[1], "s2+=0.9");
+  tl.to(revEls, { autoAlpha: 1, drawSVG: "100%", duration: 0.6, ease: R.MOTION.mark, stagger: 0.05 }, "s2+=1.6");
+  tl.addLabel("s3", `s2+=${(1.6 + 0.6 + 0.05 * revEls.length + 0.1).toFixed(3)}`);
+
+  // s3 -> s4: section access: what is not this owner's goes dark; the lock on the stream's fence
+  // cause, then effect: the lock drops and closes, then the dark spreads from it over the city and the lens
+  tl.to(lock, { autoAlpha: 1, y: 0, duration: 0.5, ease: R.MOTION.drop }, "s3");
+  tl.to(shackle, { y: 0, duration: 0.18, ease: "power2.in" }, "s3+=0.5");
+  tl.fromTo(lockPing, { autoAlpha: 0.9, attr: { r: 30 } }, { autoAlpha: 0, attr: { r: 64 }, duration: 0.7, ease: "power2.out", immediateRender: false }, "s3+=0.66");
+  tl.set(spot2, { autoAlpha: 0.7 }, "s3+=0.66");
+  tl.fromTo(wave, { attr: { r: 1 } }, { attr: { r: WAVE_R }, duration: 1.2, ease: "power2.in", immediateRender: false }, "s3+=0.66");
+  tl.to(lensVeil, { autoAlpha: 0.78, duration: 0.6, ease: R.MOTION.light }, "s3+=1.25");
+  tl.to(lensOth, { autoAlpha: 0, duration: 0.6, ease: R.MOTION.light }, "s3+=1.25");
+  rise(tl, rows[2], "s3+=0.4");
+  tl.addLabel("s4", "s3+=2.1");
+
+  // s4 -> s5: the monthly email, each action item pointing at what it counts
+  tl.to(mail, { autoAlpha: 1, y: 0, duration: 0.8, ease: R.MOTION.slide }, "s4");
+  mItems.forEach((m, i) => tl.to(m, { autoAlpha: 1, x: 0, duration: 0.45, ease: R.MOTION.mark }, `s4+=${(0.45 + 0.45 * i).toFixed(2)}`));
+  tl.to(mFoot, { autoAlpha: 1, x: 0, duration: 0.45, ease: R.MOTION.mark }, "s4+=1.75");
+  tl.fromTo(offEls.map((o) => o.ping), { autoAlpha: 1, attr: { r: 10 } }, { autoAlpha: 0, attr: { r: 36 }, duration: 0.8, ease: "power2.out", stagger: 0.04, immediateRender: false }, "s4+=0.5");
+  tl.fromTo(ctPings, { autoAlpha: 1, attr: { r: 12 } }, { autoAlpha: 0, attr: { r: 44 }, duration: 0.8, ease: "power2.out", stagger: 0.06, immediateRender: false }, "s4+=0.95");
+  tl.addLabel("s5", "s4+=2.3");
+
+  // s5 -> s6: the sentence; what nobody has decided on yet is outlined for its owner
+  rise(tl, os1, "s5");
+  rise(tl, os2, "s5+=0.35");
+  tl.to(offEls.map((o) => o.rim), { autoAlpha: 1, drawSVG: "100%", duration: 0.6, ease: R.MOTION.mark, stagger: 0.06 }, "s5+=0.5");
+  tl.addLabel("s6", "s5+=1.6");
+  tl.set({}, {}, "s6");                                         // the timeline ends on its last label
+
+  await document.querySelector("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5", "s6"]);
+})();
+</script>
+</body>
+</html>

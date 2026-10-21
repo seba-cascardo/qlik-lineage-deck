@@ -1,0 +1,2 @@
+Qué es: qlik-lineage-backup.pdf es la charla entera como PDF, una página por cada paso de cada escena (S01 a S19, tema oscuro, 1920 × 1080, sin animaciones), con un marcador por escena.
+Para qué: es el plan B si la presentación HTML falla; abrilo en Acrobat Reader con Ctrl+L (pantalla completa, una página por vez) o en Edge, y avanzá con la flecha derecha o el clicker.

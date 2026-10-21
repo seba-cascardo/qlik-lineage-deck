@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S11 · Is it still used? Data files</title>
+<!--
+  S11 (Task 7 of docs/plans/2026-10-20-night-map-deck.md, storyboard v4), on the shared world (A2 city,
+  deck/shared/world/SCENE_BRIEF.md). Ported from design-demos/round2/2-benchmark-light/s11.html.
+    s0  S10's end without its questions (S09-end, the world dimmed), the land brought up: the title and the three
+        environment totals on the land, at camera full
+    s1  the camera flies to the land (camera "land"); the whole volume in neutral light: 2,780 GB, 123,860 files;
+        the environment readouts under the land (total per environment), each tied to its territory by a faint seam
+        on the land and a tick down the coast
+    s2  used by apps people use: 674 GB, 24 %, 2,773 files, 2 % (the readouts' bars start splitting by category)
+    s3  the rest, by kind: read only by apps nobody opens, written never read, no sign of use (all four columns)
+    s4  the age filter: the 6-month contour wraps every region older than 6 months (key "older than 6 months"),
+        then turns --review and the unused ones lift out inside the land's outline (key "unused and 6+ months
+        old"): 1,278 GB in --key = 488 GB + 790 GB unchanged for 6+ months; the readouts switch to the first round
+        per environment
+    s5  100 GB drawn at the land's scale: more than ten times the space we usually have free
+    s6  A and B, for real: every old in-use field glows, rings on A's three largest places; the never-read fields
+        lit, B's ring on the largest one near its callout; one leader each, clear of the other's marks
+  The scene ends on camera "land" with the first round, the PII line and the readouts per environment (S12 starts
+  from land). A and B leave at s7: the plan's contract row says "first round, A/B, PII"; the cleaner end is a
+  deliberate deviation (S11 end -> S12 s0 measured 5.9 % mean difference, soft). On day, each material is named on the land at s3 (theme.js: the pairs fail CVD on paper).
+    s7  the PII line (GCP: 471 files)
+  Numbers: computed from TRUTH.qvd_files.age_table_mb and asserted against the plan's table (console.assert).
+  Colours: THEME tokens / theme.js variables only (python qa/lint_colors.py).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  #fadeTop, #fadeBot { position: absolute; left: 0; display: block; pointer-events: none; }
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -4px; color: var(--ink); }   /* ink from y 54, x 96 (-4: the I's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .t { position: absolute; }
+
+  /* ---- the hero zone (left of the key): the total, then the first round. Rows shared with the key:
+     number 146-296 (caps from ~168), row A 298-332 (= the key's files row), row B 342-376 */
+  .hero { left: 96px; top: 146px; white-space: nowrap; }
+  .hero .n { font-size: 150px; line-height: 150px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink);
+    font-variant-numeric: lining-nums tabular-nums; }
+  .hero .n span, .hero .w-hero span { font-size: 72px; margin-left: 16px; letter-spacing: 0; }
+  .hero .s1 { margin-top: 2px; font-size: 28px; line-height: 34px; color: var(--ink); }
+  .hero .s1 b { font-weight: 700; }
+  .hero .s2 { margin-top: 10px; font-size: 28px; line-height: 34px; color: var(--ink-dim); }
+  .hero .s2 b { color: var(--ink); font-weight: 700; }
+  /* the hero's own dark plate (over the lit land it measured 2.90:1: plan, Task 4) */
+  #heroRound { isolation: isolate; }
+  #nRound { display: inline-block; }
+  #heroRound .plate { position: absolute; left: -20px; top: 10px; width: 520px; height: 128px; border-radius: 22px; z-index: -1;
+    background: color-mix(in srgb, var(--stage) 88%, transparent);
+    box-shadow: 0 0 24px 14px color-mix(in srgb, var(--stage) 88%, transparent); }
+
+  /* ---- the key: one column per category (size, share of size, files, share of files) */
+  .col { top: 166px; width: 226px; height: 240px; }
+  .col > * { position: absolute; left: 0; white-space: nowrap; }
+  .col canvas { top: 0; width: 226px; height: 12px; border-radius: 2px; }
+  .col .lab { top: 20px; font-size: 24px; line-height: 28px; color: var(--ink-dim); }
+  .col .gb { top: 86px; font-size: 40px; line-height: 44px; font-weight: 700; color: var(--ink); }
+  .col .gb span, .col .fl span { font-weight: 400; color: var(--ink-dim); margin-left: 10px; }
+  .col .gb span { font-size: 28px; }
+  .col .fl { top: 132px; font-size: 28px; line-height: 34px; color: var(--ink); }
+  .col .fr { top: 176px; padding-left: 14px; font-size: 26px; line-height: 30px; color: var(--ink); }
+  .col .fr::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 4px; background: var(--review); }
+  .col .fr b { font-weight: 700; }
+
+  /* ---- environment readouts under the land: total -> per category (bar) -> first round */
+  .env { top: 860px; white-space: nowrap; }
+  .env .l1, .env .l2 { position: relative; height: 34px; font-size: 28px; line-height: 34px; }
+  .env .l1 { color: var(--ink); }
+  .env .l1 b { font-weight: 700; }
+  .env .l2 { color: var(--ink-dim); }
+  .env .v { position: absolute; left: 0; top: 0; }
+  .env .fr i { display: inline-block; width: 18px; height: 18px; border: 3px solid var(--review); border-radius: 2px;
+    box-sizing: border-box; margin: 0 10px 0 0; vertical-align: -1px;
+    background: color-mix(in srgb, var(--review) 22%, transparent); }
+  .env .bar { position: relative; margin-top: 10px; height: 12px; }
+  .env .bar i { position: absolute; top: 0; height: 12px; display: block; transform-origin: 0 50%; }
+  .env .bar .base { left: 0; background: color-mix(in srgb, var(--ink-faint) 34%, transparent); border-radius: 2px; }
+  .env .bar .seg-valid { background: var(--in-use); }
+  .env .bar .seg-unused_apps { background: var(--unused-apps); }
+  .env .bar .seg-never_read { background: var(--never-read); }
+  .env .bar .seg-no_sign { background: var(--no-sign); }
+  .env .bar .seg-fr { left: 0; top: -5px; height: 22px; box-sizing: border-box; border: 3px solid var(--review); border-radius: 3px;
+    background: color-mix(in srgb, var(--review) 30%, var(--stage)); }
+
+  /* ---- 100 GB at the land's scale, and its sentence */
+  #free { position: absolute; left: 848px; top: 166px; box-sizing: border-box; border: 3px dashed var(--ink);
+    background: color-mix(in srgb, var(--ink) 8%, transparent); }
+  #free span { position: absolute; left: 12px; bottom: 8px; font-size: 28px; line-height: 32px; font-weight: 700; color: var(--ink); }
+  #freeTxt { top: 166px; white-space: nowrap; }
+  #freeTxt .a { font-size: 26px; line-height: 34px; color: var(--ink-dim); }
+  #freeTxt .b { margin-top: 10px; font-size: 34px; line-height: 42px; font-weight: 500; color: var(--ink); }
+  #freeTxt .b b { font-weight: 700; }
+
+  /* ---- labels on the land */
+  #ageLbl, #matLbls .w-label { position: absolute; left: 0; top: 0; }
+  /* day only: a plate of paper under each material's name and under the age key (the day label has a halo only,
+     too weak on texture) */
+  #matLbls .w-label, [data-theme="day"] #ageLbl { padding: 0 10px; border-radius: 8px; background: color-mix(in srgb, var(--stage) 90%, transparent);
+    box-shadow: 0 0 10px 4px color-mix(in srgb, var(--stage) 70%, transparent); }
+  /* the age key: a swatch of the contour (white, then --review as the first round lifts) and its words */
+  #ageLbl { display: flex; align-items: center; }
+  #ageLbl .sw { position: relative; flex: none; width: 18px; height: 18px; margin-right: 10px; box-sizing: border-box;
+    border: 3px solid var(--ink); border-radius: 2px; background: color-mix(in srgb, var(--ink) 14%, transparent); }
+  #ageLbl .sw i { position: absolute; inset: -3px; box-sizing: border-box; border: 3px solid var(--review); border-radius: 2px;
+    background: color-mix(in srgb, var(--review) 22%, var(--stage)); }
+  #ageLbl .ks { display: inline-grid; }
+  #ageLbl .ks > span { grid-area: 1 / 1; }
+
+  /* ---- A and B, for real; PII */
+  .call { top: 166px; width: 470px; font-size: 26px; line-height: 32px; color: var(--ink-dim); white-space: normal; }
+  .call .h { display: flex; align-items: center; font-size: 28px; line-height: 36px; font-weight: 700; color: var(--ink); }
+  .call .h i { font-style: normal; display: inline-block; width: 40px; height: 40px; line-height: 40px; text-align: center;
+    border-radius: 50%; margin-right: 14px; font-size: 26px; font-weight: 700; color: var(--stage); flex: none; }
+  .call .big { margin-top: 4px; font-size: 44px; line-height: 50px; font-weight: 700; color: var(--ink); }
+  .call .tx { margin-top: 4px; }
+  #pii { width: 820px; }
+  #pii .h i { border-radius: 6px; width: auto; padding: 0 10px; font-size: 24px; letter-spacing: .04em; background: var(--ink); }
+  #pii .tx { margin-top: 10px; font-size: 30px; line-height: 40px; color: var(--ink-dim); }
+  #pii .tx b { color: var(--ink); font-weight: 700; }
+  svg.hudsvg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <canvas id="fadeTop" width="1920" height="440"></canvas>
+  <canvas id="fadeBot" width="1920" height="230"></canvas>
+  <div id="hud">
+    <svg class="hudsvg" id="marks" xmlns="http://www.w3.org/2000/svg"></svg>
+    <h1 class="scene-title">Is it still used? Data files</h1>
+
+    <div class="t hero" id="heroAll">
+      <div class="n" id="nAll"></div>
+      <div class="s1" id="sAll"></div>
+    </div>
+    <div class="t hero" id="heroRound">
+      <div class="plate"></div>
+      <div class="w-hero" id="nRound"></div>
+      <div class="s1" id="sRound1"></div>
+      <div class="s2" id="sRound2"></div>
+    </div>
+
+    <div class="t col" id="c0"></div>
+    <div class="t col" id="c1"></div>
+    <div class="t col" id="c2"></div>
+    <div class="t col" id="c3"></div>
+
+    <div id="envs"></div>
+    <div id="terr0"></div>
+
+    <div class="w-label" id="ageLbl"><i class="sw"><i></i></i><span class="ks"><span class="k1">older than 6 months</span><span class="k2">unused and 6+ months old</span></span></div>
+    <div id="matLbls"></div>
+    <div id="free"><span>100 GB</span></div>
+    <div class="t" id="freeTxt"></div>
+
+    <div class="t call" id="callA"></div>
+    <div class="t call" id="callB"></div>
+    <div class="t call" id="pii"></div>
+
+    <div id="note" class="w-note">Illustrative layout · real counts</div>
+  </div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, TR = window.TRUTH;
+const $ = (s) => document.querySelector(s);
+const E = R.MOTION;
+const NS = "http://www.w3.org/2000/svg";
+$("#icon").src = T.icon;
+
+/* ================================================================ numbers (truth.json, asserted) */
+const ROWS = TR.qvd_files.age_table_mb.rows;              // [env, usage, age, files, mb]
+const ENVS = ["On-prem", "GCP", "AWS"], CATS = ["valid", "unused_apps", "never_read", "no_sign"];
+const OLD = (age) => age === "6-8" || age === "9-11" || age === "12+";
+const ROUND = (r) => (r[1] === "unused_apps" || r[1] === "no_sign") && OLD(r[2]);
+const sum = (f) => ROWS.filter(f).reduce((a, r) => [a[0] + r[3], a[1] + r[4]], [0, 0]);   // [files, mb]
+const TOT = sum(() => true);
+const N = { total: { gb: Math.round(TOT[1] / 1000), files: TOT[0] }, cat: {}, env: {}, envCat: {}, round: {}, roundEnv: {} };
+for (const u of CATS) {
+  const s = sum((r) => r[1] === u);
+  N.cat[u] = { gb: Math.round(s[1] / 1000), pctSize: Math.round(100 * s[1] / TOT[1]), files: s[0], pctFiles: Math.round(100 * s[0] / TOT[0]) };
+}
+for (const e of ENVS) {
+  const s = sum((r) => r[0] === e);
+  N.env[e] = { gb: Math.round(s[1] / 1000), files: s[0], mb: s[1] };
+  N.envCat[e] = {};
+  for (const u of CATS) N.envCat[e][u] = sum((r) => r[0] === e && r[1] === u)[1];
+  const fr = sum((r) => r[0] === e && ROUND(r));
+  N.roundEnv[e] = { gb: Math.round(fr[1] / 100) / 10, files: fr[0], mb: fr[1] };
+}
+for (const u of ["unused_apps", "no_sign", "never_read"]) N.round[u] = Math.round(sum((r) => r[1] === u && OLD(r[2]))[1] / 1000);
+const RT = sum(ROUND);
+N.round.gb = Math.round(RT[1] / 1000); N.round.files = RT[0];
+N.a = sum((r) => r[1] === "valid" && OLD(r[2]));
+// the plan's table (Task 7, Seba 2026-10-20): every number on screen, asserted against the rows
+{
+  const ok = (c, m) => console.assert(c, "S11 number: " + m);
+  const P = { valid: [674, 24, 2773, 2], unused_apps: [885, 32, 31247, 25], never_read: [210, 8, 6688, 5], no_sign: [1011, 36, 83152, 67] };
+  for (const u of CATS) { const c = N.cat[u], p = P[u]; ok(c.gb === p[0] && c.pctSize === p[1] && c.files === p[2] && c.pctFiles === p[3], u); }
+  ok(N.total.gb === 2780 && N.total.files === 123860 && N.total.files === TR.qvd_files.total_files, "total");
+  const PE = { "On-prem": [1472, 85831, 744.6, 51901], GCP: [940, 30487, 382.7, 10570], AWS: [368, 7542, 150.9, 4302] };
+  for (const e of ENVS) ok(N.env[e].gb === PE[e][0] && N.env[e].files === PE[e][1] && N.roundEnv[e].gb === PE[e][2] && N.roundEnv[e].files === PE[e][3], e);
+  for (const b of TR.qvd_files.first_round.by_env) ok(N.roundEnv[b.env].gb === b.gb && N.roundEnv[b.env].files === b.files, "first round " + b.env);
+  ok(N.round.unused_apps === 488 && N.round.no_sign === 790 && N.round.never_read === 0 && N.round.gb === 1278
+    && N.round.files === 66773 && N.round.files === TR.qvd_files.first_round.files, "first round");
+  ok(N.a[0] === TR.qvd_files.file_a_for_real.files && Math.round(N.a[1] / 100) / 10 === TR.qvd_files.file_a_for_real.gb, "file A");
+  ok(N.cat.never_read.files === TR.qvd_files.file_b_for_real.files, "file B");
+  for (const b of TR.qvd_files.by_usage) ok(N.cat[b.key].files === b.files && N.cat[b.key].pctSize === b.share_pct_size, "by_usage " + b.key);
+  ok(TR.qvd_files.pii_gcp.files === 471, "PII");
+}
+const fmt = (n) => n.toLocaleString("en-GB");
+const fmt1 = (n) => n.toLocaleString("en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/* ================================================================ the land's geometry at camera "land" */
+const CL = R.camera("land"), Z = CL.scale;
+const S = (p) => [CL.x + Z * p[0], CL.y + Z * p[1]];            // world -> screen at camera land
+const LBB = R.bb(W.land.poly);
+// the land's canvases cover this world rect, pixel aligned on screen at camera land; res = the zoom, so they stay
+// sharp where the scene rests
+const LR = (() => {
+  const sx = Math.floor(CL.x + Z * (LBB[0] - 6)), sy = Math.floor(CL.y + Z * (LBB[1] - 6));
+  const ex = Math.ceil(CL.x + Z * (LBB[2] + 6)), ey = Math.ceil(CL.y + Z * (LBB[3] + 6));
+  return { x: (sx - CL.x) / Z, y: (sy - CL.y) / Z, w: (ex - sx) / Z, h: (ey - sy) / Z, pw: ex - sx, ph: ey - sy, sx, sy };
+})();
+const lx = (p) => [(p[0] - LR.x) * Z, (p[1] - LR.y) * Z];          // world -> land canvas px
+
+/* ================================================================ the land's materials (THEME only) */
+const CATC = { valid: T.inUse, unused_apps: T.unusedApps, never_read: T.neverRead, no_sign: T.noSign };
+// lum: the marks' light; g: the share of the colour in the field's ground. In use a little lower than round 2
+// (lum 0.78, bloom 0.55) so it reads as light, not neon (controller call, pending Seba)
+const MAT = { valid: { lum: 0.5, g: 0.15 }, unused_apps: { lum: 0.6, g: 0.22 }, never_read: { lum: 0.5, g: 0.2 }, no_sign: { lum: 0.4, g: 0.26 } };
+const IN_USE_BLOOM = 0.34;
+const STG = T.channels(T.stage);
+const mix = (c, k) => T.channels(c).map((v, i) => Math.max(0, Math.min(255, Math.round(v * k + STG[i] * (1 - k)))));
+const shade = (() => { const r = R.mulberry32(77), m = {}; for (const c of W.land.containers) m[c.id] = r(); return (id) => m[id]; })();
+const GRAIN = { minTile: 3.4 * Z, minGrain: 2.0 * Z, gap: 0.8 * Z, gapK: 0.32, dotK: 0.5, cover: 0.7, jx: 0.5, jy: 0.08 };
+function mat(u, ct, o = {}) {
+  const v = ((ct ? shade(ct.id) : 0.5) - 0.5) * 0.2, g = mix(CATC[u], (o.g ?? MAT[u].g) * (1 + v));
+  return Object.assign({ ground: T.rgb(g), rgb: T.channels(CATC[u]).join(","), lum: o.lum ?? MAT[u].lum, add: false }, GRAIN);
+}
+// the land as the map draws it (world.js map(): "dark" at S04-S10, "lit" = the neutral light of s1)
+function terrain(D, lum) {
+  return (cl, ct) => {
+    const v = shade(ct.id), G = D.ground, g0 = G.base + v * G.span * T.texture.shade;
+    return Object.assign({ ground: T.rgb([(g0 + G.tint[0]) | 0, (g0 + G.tint[1]) | 0, (g0 + G.tint[2]) | 0]), rgb: D.mark, lum, add: false }, GRAIN);
+  };
+}
+
+/* ================================================================ canvases (drawn once, frozen before Scene.init) */
+const lumOf = (c) => T.channels(c).reduce((a, v) => a + v, 0);
+const SHADOW = lumOf(T.stage) < lumOf(T.ink) ? T.stage : T.ink;     // the darker of the two, on both themes
+function cv() { const c = document.createElement("canvas"); c.width = LR.pw; c.height = LR.ph; return c; }
+function drawLand(c, style, opt = {}) {
+  const g = c.getContext("2d");
+  if (opt.base) { R.path(g, W.land.poly, lx); g.fillStyle = opt.base; g.fill(); }
+  R.land(g, { xf: lx, s: Z, gap: R.HAIR * Z, terrGap: 3.4 * Z, gapColor: opt.gapColor || T.lit.gap, style });
+  if (opt.rim) { R.path(g, W.land.poly, lx); g.lineWidth = R.HAIR * Z; g.strokeStyle = opt.rim; g.stroke(); }
+  return c;
+}
+const cells = (pick) => W.land.containers.flatMap((ct) => ct.cells.filter((cl) => pick(cl, ct)));
+const polysOf = (pick) => cells(pick).map((cl) => cl.poly);
+const bloomOf = (c, pick) => R.bloomCells(c.getContext("2d"), polysOf(pick), T.inUse, IN_USE_BLOOM, 12, LR, Z);
+const isRound = (cl) => cl.part === "old" && (cl.u === "unused_apps" || cl.u === "no_sign");
+const isValid = (cl) => cl.u === "valid";
+// a union's outline: every polygon stroked 2w wide, interiors erased (shared edges vanish), clipped to the land
+function outline(c, polys, colour, w) {
+  const g = c.getContext("2d");
+  g.lineJoin = "round"; g.lineCap = "round";
+  for (const p of polys) { R.path(g, p, lx); g.lineWidth = 2 * w; g.strokeStyle = colour; g.stroke(); }
+  g.globalCompositeOperation = "destination-out";
+  for (const p of polys) { R.path(g, p, lx); g.fillStyle = T.rgb(T.stage); g.fill(); }
+  g.globalCompositeOperation = "destination-in"; R.path(g, W.land.poly, lx); g.fillStyle = T.rgb(T.stage); g.fill();
+  g.globalCompositeOperation = "source-over";
+  return c;
+}
+
+const L = {};
+L.dark = drawLand(cv(), terrain(T.dark, 0.085), { base: T.dark.fill, rim: T.dark.rim, gapColor: T.dark.gap });
+L.neutral = drawLand(cv(), terrain(T.lit, 0.13), { base: T.lit.fill, rim: T.lit.rim });
+L.valid = drawLand(cv(), (cl, ct) => (isValid(cl) ? mat("valid", ct) : null)); bloomOf(L.valid, isValid);
+for (const u of ["unused_apps", "never_read", "no_sign"]) L[u] = drawLand(cv(), (cl, ct) => (cl.u === u ? mat(u, ct) : null));
+L.use = drawLand(cv(), (cl, ct) => mat(cl.u, ct), { base: T.lit.fill, rim: T.lit.rim }); bloomOf(L.use, isValid);
+// the first round carved out: sockets of the stage where its plates were
+const SOCKET = Object.assign({ ground: T.rgb(T.stage), rgb: T.channels(T.stage).join(","), lum: 0, add: false }, GRAIN);
+L.sock = drawLand(cv(), (cl, ct) => (isRound(cl) ? SOCKET : mat(cl.u, ct)), { base: T.lit.fill, rim: T.lit.rim }); bloomOf(L.sock, isValid);
+L.dim = cv(); { const g = L.dim.getContext("2d"); R.path(g, W.land.poly, lx); g.fillStyle = T.rgba(T.stage, 0.6); g.fill(); }
+// the 6-month contour: the outline of every region older than 6 months (the land's age is a mosaic, not a band)
+L.age = outline(cv(), polysOf((cl) => cl.part === "old"), T.rgb(T.ink), 2.5);
+L.shadow = cv(); { const g = L.shadow.getContext("2d"); g.filter = "blur(8px)"; g.fillStyle = T.rgba(SHADOW, SHADOW === T.stage ? 0.95 : 0.32);
+  for (const p of polysOf(isRound)) { R.path(g, p, lx); g.fill(); } g.filter = "none"; }
+L.plate = drawLand(cv(), (cl, ct) => (isRound(cl) ? mat(cl.u, ct, { lum: Math.min(1, MAT[cl.u].lum * 1.25), g: MAT[cl.u].g * 1.4 }) : null));
+// the rim (--review): the same contour, for the first round only, slivers too small to read as a plate left out
+L.rim = outline(cv(), cells((cl) => isRound(cl) && R.area(cl.poly.map(lx)) > 60).map((cl) => cl.poly), T.rgb(T.review), 2.5);
+// A: old files still read (in use, older than 6 months); B: written, never read (all younger than 6 months)
+L.Aglow = drawLand(cv(), (cl, ct) => (isValid(cl) && cl.part === "old" ? mat("valid", ct, { lum: 0.95, g: 0.4 }) : null));
+L.Bglow = drawLand(cv(), (cl, ct) => (cl.u === "never_read" ? mat("never_read", ct, { lum: 0.85, g: 0.5 }) : null));
+// PII: 471 points inside GCP's oldest unused plates, spread like grain (blue noise), not on a grid
+const PII = TR.qvd_files.pii_gcp.files;
+L.pii = cv(); {
+  const g = L.pii.getContext("2d"), rn = R.mulberry32(471);
+  const polys = W.land.containers.filter((c) => c.env === "GCP").flatMap((c) => c.cells.filter((cl) => cl.u === "no_sign" && cl.part === "old").map((cl) => cl.poly.map(lx)));
+  const areas = polys.map(R.area), tot = areas.reduce((a, b) => a + b, 0), pts = [], minD = Math.sqrt(tot / PII) * 0.62;
+  let guard = 0;
+  while (pts.length < PII && guard++ < 200000) {
+    let r = rn() * tot, k = 0; while (r > areas[k] && k < areas.length - 1) { r -= areas[k]; k++; }
+    const b = R.bb(polys[k]), p = [b[0] + rn() * (b[2] - b[0]), b[1] + rn() * (b[3] - b[1])];
+    if (!R.inside(p, polys[k])) continue;
+    if (guard < 150000 && pts.some((q) => Math.abs(q[0] - p[0]) < minD && Math.abs(q[1] - p[1]) < minD && Math.hypot(q[0] - p[0], q[1] - p[1]) < minD)) continue;
+    pts.push(p);
+  }
+  console.assert(pts.length === PII, "PII points " + pts.length);
+  g.globalCompositeOperation = T.blend;
+  const spr = R.sprite(T.app);
+  g.globalAlpha = 0.55; for (const p of pts) g.drawImage(spr, p[0] - 7, p[1] - 7, 14, 14);
+  g.globalAlpha = 1; g.globalCompositeOperation = "source-over"; g.fillStyle = T.rgb(T.app);
+  for (const p of pts) { g.beginPath(); g.arc(p[0], p[1], 1.9, 0, Math.PI * 2); g.fill(); }
+  const c = pts.reduce((a, p) => [a[0] + p[0] / pts.length, a[1] + p[1] / pts.length], [0, 0]);
+  L.piiAt = [LR.sx + c[0], LR.sy + c[1]];
+}
+
+/* ================================================================ fades: clear ground for the text above and below the land */
+function fade(c, a0, a1, y0, y1, seed) {
+  const g = c.getContext("2d"), id = g.createImageData(c.width, c.height), d = id.data, rn = R.mulberry32(seed);
+  const [sr, sg, sb] = STG;
+  for (let y = 0; y < c.height; y++) {
+    const k = Math.max(0, Math.min(1, (y - y0) / (y1 - y0))), s = k * k * (3 - 2 * k), a = (a0 + (a1 - a0) * s) * 255;
+    for (let x = 0; x < c.width; x++) { const i = (y * c.width + x) * 4; d[i] = sr; d[i + 1] = sg; d[i + 2] = sb; d[i + 3] = Math.max(0, Math.min(255, a + (rn() - 0.5) * 2)); }
+  }
+  g.putImageData(id, 0, 0);
+}
+fade($("#fadeTop"), 0.9, 0, 318, 436, 11); $("#fadeTop").style.top = "0px";
+fade($("#fadeBot"), 0, 0.7, 0, 36, 12); $("#fadeBot").style.top = "850px";
+
+/* ================================================================ HUD text */
+$("#nAll").innerHTML = `${fmt(N.total.gb)}<span>GB</span>`;
+$("#sAll").innerHTML = `<b>${fmt(N.total.files)} QVD files</b> in Production · On-prem, GCP and AWS`;
+$("#nRound").innerHTML = `${fmt(N.round.gb)}<span>GB</span>`;
+$("#sRound1").innerHTML = `<b>First clean-up round</b> · for owners to review`;
+$("#sRound2").innerHTML = `<b>${fmt(N.round.files)} files</b> · ${N.round.unused_apps} GB + ${N.round.no_sign} GB unchanged for 6+ months`;
+const LABEL = { valid: "Used by apps<br>people use", unused_apps: "Read only by apps<br>nobody opens", never_read: "Written,<br>never read", no_sign: "No sign<br>of use" };
+CATS.forEach((u, i) => {
+  const c = N.cat[u], el = $("#c" + i);
+  el.style.left = (848 + i * 246) + "px";
+  el.innerHTML = `<canvas width="226" height="12"></canvas><div class="lab">${LABEL[u]}</div>`
+    + `<div class="gb">${fmt(c.gb)} GB<span>${c.pctSize} %</span></div><div class="fl">${fmt(c.files)} files<span>${c.pctFiles} %</span></div>`
+    + (N.round[u] ? `<div class="fr"><b>${N.round[u]} GB</b> unchanged<br>for 6+ months</div>` : "");
+  // the swatch is a strip of the category's own material, as drawn on the land
+  const sc = el.querySelector("canvas"), g = sc.getContext("2d");
+  const cell = { poly: [[0, 0], [226, 0], [226, 12], [0, 12]], files: Math.round(226 * 12 / (u === "valid" ? 49 : 9)) };
+  R.cellFiles(g, cell, 0, (p) => p, 1, Object.assign(mat(u, null, { lum: Math.min(1, MAT[u].lum * 1.3) }), { minTile: 6, minGrain: 3 }), 31 + i);
+});
+
+/* ---- environment readouts: total -> per category (the bar) -> first round */
+const PXGB = 0.54;
+const terrLeft = (env) => {   // the territory's left edge along the land's south coast, at camera land
+  const t = W.land.territories.find((x) => x.env === env);
+  return Math.min(...t.poly.map(S).filter((p) => p[1] > 760).map((p) => p[0]));
+};
+const ENVX = { "On-prem": 96, GCP: Math.round(terrLeft("GCP")) + 14, AWS: Math.round(terrLeft("AWS")) + 14 };
+const ENV = {};
+for (const e of ENVS) {
+  const d = document.createElement("div"); d.className = "t env"; d.style.left = ENVX[e] + "px";
+  const w = N.env[e].gb * PXGB, frW = N.roundEnv[e].mb / 1000 * PXGB;
+  let x = 0, segs = "";
+  for (const u of CATS) { const sw = N.envCat[e][u] / 1000 * PXGB; segs += `<i class="seg seg-${u}" style="left:${x.toFixed(1)}px;width:${sw.toFixed(1)}px"></i>`; x += sw; }
+  d.innerHTML = `<div class="l1"><span class="v tot"><b>${e}</b> · ${fmt(N.env[e].gb)} GB</span>`
+    + `<span class="v fr"><i></i><b>${e}</b> · ${fmt1(N.roundEnv[e].gb)} of ${fmt(N.env[e].gb)} GB</span></div>`
+    + `<div class="l2"><span class="v tot">${fmt(N.env[e].files)} files</span><span class="v fr">${fmt(N.roundEnv[e].files)} of ${fmt(N.env[e].files)} files</span></div>`
+    + `<div class="bar" style="width:${w.toFixed(1)}px"><i class="base" style="width:${w.toFixed(1)}px"></i>${segs}<i class="seg-fr" style="width:${frW.toFixed(1)}px"></i></div>`;
+  $("#envs").appendChild(d); ENV[e] = d;
+}
+
+/* ================================================================ the scene */
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { state: "S09-end" });
+  // S10 ends in S09-end dimmed. The veil here lives inside the world, over the map and its SVG, so the land's
+  // own layers can sit above it (h.veil stays off)
+  const veil = document.createElement("div");
+  veil.style.cssText = `position:absolute;left:${h.rect.x}px;top:${h.rect.y}px;width:${h.rect.w}px;height:${h.rect.h}px;background:var(--stage);`;
+  h.world.appendChild(veil);
+  const lay = (c, parent = h.world) => { c.style.cssText = `position:absolute;display:block;left:${LR.x}px;top:${LR.y}px;width:${LR.w}px;height:${LR.h}px;`; parent.appendChild(c); return c; };
+  const order = ["dark", "neutral", "valid", "unused_apps", "never_read", "no_sign", "use", "sock", "dim", "Bglow", "Aglow", "age"];
+  for (const k of order) lay(L[k]);
+  // the lifted plates and their shadow stay inside the land's outline (critique: lifted, they spilled over the
+  // north coast): a still wrapper clipped to the land, in world units, holds them
+  const clip = document.createElement("div");
+  clip.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;clip-path:polygon("
+    + W.land.poly.map((p) => `${p[0].toFixed(2)}px ${p[1].toFixed(2)}px`).join(",") + ");";
+  h.world.appendChild(clip);
+  lay(L.shadow, clip);
+  const lift = document.createElement("div"); lift.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;";
+  clip.appendChild(lift);
+  const lifted = ["plate", "rim", "pii"];
+  for (const k of lifted) lay(L[k], lift);
+  order.push("shadow");
+  await R.freeze([...order, ...lifted].map((k) => L[k]).concat([$("#fadeTop"), $("#fadeBot")]));
+  for (const k of [...order, ...lifted]) L[k] = R.fz(L[k]);
+  const fadeTop = R.fz($("#fadeTop")), fadeBot = R.fz($("#fadeBot"));
+  await Promise.all(["400", "500", "700"].map((w) => document.fonts.load(`${w} 28px Vodafone`)));
+  await document.fonts.ready;
+  { // the hero's plate hugs its number
+    const n = $("#nRound"), w = n.scrollWidth;
+    Object.assign($("#heroRound .plate").style, { width: (w + 40) + "px" });
+  }
+
+  /* ---- s0: the environment totals on the land at camera full, where the base territory names sit */
+  const t0 = {};
+  for (const e of ENVS) {
+    const base = h.labels.get("terr-" + e), d = document.createElement("div");
+    d.className = "w-label w-terr w-at"; d.innerHTML = `<b>${e}</b><span class="w-dim"> · ${fmt(N.env[e].gb)} GB</span>`;
+    $("#terr0").appendChild(d);
+    const Lb = base.__L, v = R.camera("full");
+    let x = v.x + Lb.at[0] - d.offsetWidth / 2;
+    const y = v.y + Lb.at[1] - d.offsetHeight / 2;
+    if (e === "AWS") x = Math.min(x, 1760 - d.offsetWidth);       // clear of the icon's corner
+    d.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    t0[e] = d;
+  }
+  const baseNames = [...h.labels.entries()].filter(([id]) => !id.startsWith("terr-") && id !== "q").map(([, el]) => el);
+  const baseTerr = ENVS.map((e) => h.labels.get("terr-" + e));
+
+  /* ---- marks on the land (screen space at camera land) */
+  const svg = $("#marks");
+  const sv = (tag, a, p = svg) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+  // the age key sits at the middle of the largest region older than 6 months, a little above its centre (clear of
+  // the A place at its south-east corner on both themes); the rings and leaders below keep clear of its box
+  let ageBox;
+  {
+    const big = cells((cl) => isRound(cl)).sort((a, b) => R.area(b.poly) - R.area(a.poly))[0], c = R.centroid(big.poly.map(S));
+    const el = $("#ageLbl"), x = Math.round(c[0] - el.offsetWidth / 2), y = Math.round(c[1] - el.offsetHeight / 2 - 30);
+    gsap.set(el, { x, y });
+    ageBox = [x - 14, y - 6, x + el.offsetWidth + 14, y + el.offsetHeight + 6];
+  }
+  // where the environments meet on the land: a faint seam between territories, continued as a tick down the coast
+  // to the readout it names (the readouts sit at the seam + 14)
+  const seams = [];
+  for (const e of ["GCP", "AWS"]) {
+    const prev = W.land.territories.find((x) => x.env === ENVS[ENVS.indexOf(e) - 1]), t = W.land.territories.find((x) => x.env === e);
+    const shared = t.poly.filter((p) => prev.poly.some((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 0.05)).map(S).sort((a, b) => a[1] - b[1]);
+    console.assert(shared.length >= 2, "seam " + e);
+    seams.push({ e, top: shared[0], bot: shared[shared.length - 1] });
+  }
+  // 100 GB at the land's scale, beside its sentence
+  const FREE = Math.sqrt(100000 * W.land.px_per_mb) * Z;
+  Object.assign($("#free").style, { width: FREE.toFixed(1) + "px", height: FREE.toFixed(1) + "px" });
+  $("#freeTxt").style.left = Math.round(848 + FREE + 30) + "px";
+  $("#freeTxt").innerHTML = `<div class="a">100 GB, drawn at the land's scale</div>`
+    + `<div class="b">The first round is <b>more than ten times</b><br>the space we usually have free</div>`;
+  // A: the few old files still read, grouped by place: a ring per group; B: the never-read fields, lit in place
+  const groups = [];
+  for (const cl of cells((c) => isValid(c) && c.part === "old")) {
+    const q = cl.poly.map(S), c = R.centroid(q), b = R.bb(q), a = R.area(q), r = Math.max(16, Math.hypot(b[2] - b[0], b[3] - b[1]) / 2 + 6);
+    const near = groups.find((g) => Math.hypot(g.c[0] - c[0], g.c[1] - c[1]) < g.r + r + 40);
+    if (near) {
+      const nc = [(near.c[0] + c[0]) / 2, (near.c[1] + c[1]) / 2];
+      near.r = Math.max(near.r, r, Math.hypot(near.c[0] - c[0], near.c[1] - c[1]) / 2 + Math.max(near.r, r));
+      near.c = nc; near.files += cl.files; near.a += a;
+    } else groups.push({ c, r, files: cl.files, a });
+  }
+  // geometry checks for the marks: a circle against a box, a polyline against a circle or a box
+  const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+    const k = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)); return Math.hypot(a[0] + k * dx - p[0], a[1] + k * dy - p[1]); };
+  const ringHitsBox = (c, r, bx, m = 8) => { const qx = Math.max(bx[0], Math.min(c[0], bx[2])), qy = Math.max(bx[1], Math.min(c[1], bx[3])); return Math.hypot(qx - c[0], qy - c[1]) < r + m; };
+  const pathHitsRing = (pts, c, r, m = 10) => pts.slice(1).some((p, i) => segD(c, pts[i], p) < r + m);
+  const pathHitsBox = (pts, bx) => pts.slice(1).some((p, i) => { for (let k = 0; k <= 40; k++) { const x = pts[i][0] + (p[0] - pts[i][0]) * k / 40, y = pts[i][1] + (p[1] - pts[i][1]) * k / 40;
+    if (x > bx[0] && x < bx[2] && y > bx[1] && y < bx[3]) return true; } return false; });
+  const pathsMeet = (p, q, m = 14) => p.slice(1).some((b, i) => { for (let k = 0; k <= 40; k++) {
+    const x = [p[i][0] + (b[0] - p[i][0]) * k / 40, p[i][1] + (b[1] - p[i][1]) * k / 40];
+    if (q.slice(1).some((d, j) => segD(x, q[j], d) < m)) return true; } return false; });
+  const callA = $("#callA"), callB = $("#callB"), pii = $("#pii");
+  callA.style.left = "848px"; callB.style.left = "1340px"; pii.style.left = ENVX.GCP + "px";   // PII sits above GCP
+  callA.innerHTML = `<div class="h"><i style="background:var(--in-use)">A</i>A, for real</div><div class="big">${N.a[0]} files</div>`
+    + `<div class="tx">older than 6&nbsp;months are still read by live products: deleting by age would break them.</div>`;
+  callB.innerHTML = `<div class="h"><i style="background:var(--never-read)">B</i>B, for real</div><div class="big">${fmt(N.cat.never_read.gb)} GB</div>`
+    + `<div class="tx">written and never read, none of it older than 6&nbsp;months: an age rule would never find them.</div>`;
+  pii.innerHTML = `<div class="h"><i>PII</i></div>`
+    + `<div class="tx">GCP: <b>${PII} files</b> from apps that declare PII data,<br>over 2 years old · for owners to verify</div>`;
+  // one leader per callout, to where most of it sits: an elbow from under the text, down and across, to a ring
+  const leaderPts = (box, to, r) => {
+    const x0 = box.left + 20, y0 = box.bottom + 10, yk = Math.min(to[1] - r - 6, 404);
+    const dx = to[0] - x0, dy = to[1] - yk, Ld = Math.hypot(dx, dy) || 1, e = [to[0] - dx / Ld * r, to[1] - dy / Ld * r];
+    return [[x0, y0], [x0, yk], e];
+  };
+  const leader = (g, pts, colour) => {
+    const d = "M" + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" L");
+    sv("path", { d, fill: "none", stroke: T.rgba(T.stage, 0.85), "stroke-width": 7, "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+    sv("path", { d, fill: "none", stroke: colour, "stroke-width": 2.5, "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+    sv("circle", { cx: pts[0][0], cy: pts[0][1], r: 4, fill: colour }, g);
+  };
+  const ring = (g, c, r, colour) => {
+    sv("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: T.rgba(T.stage, 0.85), "stroke-width": 7 }, g);
+    sv("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: colour, "stroke-width": 3 }, g);
+  };
+  const gSeam = sv("g", {}), gA = sv("g", {}), gB = sv("g", {}), gP = sv("g", {});
+  for (const s of seams) {
+    const d = `M${s.top[0].toFixed(1)},${(s.top[1] + 4).toFixed(1)} L${s.bot[0].toFixed(1)},${s.bot[1].toFixed(1)}`;
+    sv("path", { d, fill: "none", stroke: T.rgba(T.stage, 0.55), "stroke-width": 6, "stroke-linecap": "round" }, gSeam);
+    sv("path", { d, fill: "none", stroke: T.rgba(T.ink, 0.6), "stroke-width": 2, "stroke-dasharray": "2 7", "stroke-linecap": "round" }, gSeam);
+    // the tick: from the coast down the readout's left side, to its bar
+    sv("path", { d: `M${s.bot[0].toFixed(1)},${(s.bot[1] + 2).toFixed(1)} L${s.bot[0].toFixed(1)},950`, fill: "none", stroke: T.rgba(T.ink, 0.45), "stroke-width": 2 }, gSeam);
+  }
+  // each leader goes to one of its places (the rings and lit fields show the rest), short and clear
+  const foot = (el) => { const b = el.getBoundingClientRect(); return [b.left + 20, 404]; };
+  const nearest = (list, at) => list.slice().sort((a, b) => Math.hypot(a.c[0] - at[0], a.c[1] - at[1]) - Math.hypot(b.c[0] - at[0], b.c[1] - at[1]))[0];
+  const fields = (pick) => cells(pick).filter((cl) => R.area(cl.poly.map(S)) > 900).map((cl) => {
+    const q = cl.poly.map(S), b = R.bb(q);
+    return { c: R.centroid(q), a: R.area(q), r: Math.max(16, Math.min(b[2] - b[0], b[3] - b[1]) / 2 + 2) };
+  });
+  // B first: the largest never-read field near its callout (critique: the leader went to a small patch), its ring
+  // and leader clear of the age key
+  const bBox = callB.getBoundingClientRect(), bFoot = foot(callB);
+  const bScore = (f) => f.a / (1 + Math.hypot(f.c[0] - bFoot[0], f.c[1] - bFoot[1]) / 300);
+  const bMain = fields((cl) => cl.u === "never_read").map((f) => Object.assign(f, { pts: leaderPts(bBox, f.c, f.r) }))
+    .filter((f) => !ringHitsBox(f.c, f.r, ageBox) && !pathHitsBox(f.pts, ageBox)).sort((a, b) => bScore(b) - bScore(a))[0];
+  // A: the glow stays on every old in-use field; rings only on the three largest places, clear of the age key and
+  // of B's ring and leader (critique: B's leader ran through an A ring; eight rings read as scattered pins)
+  const shownA = groups.filter((g) => !ringHitsBox(g.c, g.r, ageBox) && Math.hypot(g.c[0] - bMain.c[0], g.c[1] - bMain.c[1]) > g.r + bMain.r + 30
+    && !pathHitsRing(bMain.pts, g.c, g.r)).sort((a, b) => b.a - a.a).slice(0, 3);
+  const aBox = callA.getBoundingClientRect();
+  const aOk = (g) => { const p = leaderPts(aBox, g.c, g.r); return !pathHitsBox(p, ageBox) && !pathsMeet(p, bMain.pts) && !pathHitsRing(p, bMain.c, bMain.r)
+    && shownA.every((o) => o === g || !pathHitsRing(p, o.c, o.r)); };
+  const aMain = nearest(shownA.filter(aOk), foot(callA)) || nearest(shownA, foot(callA));
+  const aPts = leaderPts(aBox, aMain.c, aMain.r);
+  console.assert(aOk(aMain), "S11: A's leader crosses a mark");
+  for (const gr of shownA) ring(gA, gr.c, gr.r, T.rgb(T.inUse));
+  leader(gA, aPts, T.rgb(T.inUse));
+  ring(gB, bMain.c, bMain.r, T.rgb(T.neverRead));
+  leader(gB, bMain.pts, T.rgb(T.neverRead));
+  const pMain = nearest(fields((cl, ct) => ct.env === "GCP" && cl.u === "no_sign" && cl.part === "old"), foot(pii));
+  leader(gP, leaderPts(pii.getBoundingClientRect(), pMain.c, 6), T.rgb(T.ink));
+  window.__s11dbg = { ageBox, seams, groups: groups.map((g) => ({ c: g.c.map(Math.round), r: Math.round(g.r), a: Math.round(g.a) })),
+    shownA: shownA.map((g) => g.c.map(Math.round)), aPts, bMain: { c: bMain.c, r: bMain.r, a: bMain.a, pts: bMain.pts } };
+
+  /* ---- the state before the first click: S10's end (S09-end, dimmed) without its questions; the land up */
+  const hud = ["#heroAll", "#heroRound", "#c0", "#c1", "#c2", "#c3", "#ageLbl", "#free", "#freeTxt", "#callA", "#callB", "#pii", ...ENVS.map((e) => ENV[e])];
+  gsap.set(hud, { autoAlpha: 0 });
+  gsap.set(".col .fr, .env .fr, .env .seg-fr", { autoAlpha: 0 });
+  gsap.set(".env .seg", { scaleX: 0 });
+  gsap.set(".env .seg-fr", { scaleX: 0 });
+  gsap.set([gSeam, gA, gB, gP, "#ageLbl .k2", "#ageLbl .sw i"], { autoAlpha: 0 });
+  gsap.set(veil, { autoAlpha: WorldStage.DIM });
+  gsap.set(baseTerr, { autoAlpha: 0 });
+  gsap.set([L.valid, L.unused_apps, L.never_read, L.no_sign, L.use, L.sock, L.dim, L.Aglow, L.Bglow, L.age, L.shadow, L.plate, L.rim, L.pii, fadeTop, fadeBot], { autoAlpha: 0 });
+  gsap.set(L.neutral, { autoAlpha: 0.45 });                         // the land comes forward: half its light
+  gsap.set(L.age, { clipPath: "inset(0% 100% 0% 0%)" });
+  // light spreads across the land, west to east, as each material turns on
+  const WIPE0 = "inset(0% 100% 0% 0%)", WIPE1 = "inset(0% 0% 0% 0%)";
+  gsap.set([L.valid, L.unused_apps, L.never_read, L.no_sign], { clipPath: WIPE0 });
+  // day only: each material named on the land at s3 (theme.js: on paper the pairs fail CVD, no sign is 1.87:1)
+  const matLbls = [];
+  if (T.name === "day") {
+    const NAME = { valid: "In use", unused_apps: "Apps nobody opens", never_read: "Never read", no_sign: "No sign of use" };
+    const used = [];
+    for (const u of CATS) {
+      const pick = cells((cl) => cl.u === u).map((cl) => ({ q: cl.poly.map(S) })).map((o) => Object.assign(o, { a: R.area(o.q), c: R.centroid(o.q) }))
+        .filter((o) => o.c[0] > 330 && o.c[0] < 1640 && used.every((c) => Math.hypot(c[0] - o.c[0], c[1] - o.c[1]) > 260)).sort((a, b) => b.a - a.a)[0];
+      used.push(pick.c);
+      const d = document.createElement("div"); d.className = "w-label"; d.textContent = NAME[u];
+      $("#matLbls").appendChild(d);
+      gsap.set(d, { x: Math.round(pick.c[0] - d.offsetWidth / 2), y: Math.round(pick.c[1] - d.offsetHeight / 2), autoAlpha: 0 });
+      matLbls.push(d);
+    }
+  }
+
+  const tl = gsap.timeline({ paused: true, defaults: { ease: E.rise } });
+  tl.addLabel("s0", 0);
+  const rise = (el, at, d = 0.7, y = 12) => tl.fromTo(el, { autoAlpha: 0, y }, { autoAlpha: 1, y: 0, duration: d, immediateRender: false }, at);
+
+  // s1: to the land; the whole volume in neutral light, its total and the environments' totals
+  let t = 0;
+  tl.to([...baseNames, ...Object.values(t0)], { autoAlpha: 0, duration: 0.35, ease: E.light }, t);
+  tl.to(h.layers.owners, { autoAlpha: 0, duration: 0.3, ease: E.light }, t);      // world units: hidden at zoom > 1
+  // the city's bridges and ports go quiet with the names (an SVG under a zooming camera is re-rasterised every frame)
+  tl.to([h.layers.known, h.layers.bridged], { autoAlpha: 0, duration: 0.35, ease: E.light }, t);
+  tl.to(h.world, { ...R.camera("land"), duration: 1.8, ease: E.dolly }, t + 0.1);
+  tl.to([fadeTop, fadeBot], { autoAlpha: 1, duration: 0.9, ease: E.light }, t + 1.0);
+  tl.to(veil, { autoAlpha: 0.72, duration: 0.9, ease: E.light }, t + 1.0);
+  tl.to(L.neutral, { autoAlpha: 1, duration: 0.8, ease: E.light }, t + 1.2);
+  rise("#heroAll", t + 1.8);
+  ENVS.forEach((e, i) => rise(ENV[e], t + 2.0 + i * 0.08));
+  tl.to(gSeam, { autoAlpha: 1, duration: 0.6, ease: E.light }, t + 2.0);
+  tl.addLabel("s1", t + 2.8);
+
+  // s2: what apps people use read lights up (and only that)
+  t += 2.9;
+  tl.to(L.valid, { autoAlpha: 1, duration: 0.3, ease: E.light }, t);
+  tl.to(L.valid, { clipPath: WIPE1, duration: 1.0, ease: E.beam }, t);
+  tl.to(L.neutral, { autoAlpha: 0.5, duration: 0.8, ease: E.light }, t);
+  rise("#c0", t + 0.3);
+  tl.to(".env .seg-valid", { scaleX: 1, duration: 0.7, ease: E.slide }, t + 0.4);
+  tl.addLabel("s2", t + 1.6);
+
+  // s3: the rest, by kind: read only by apps nobody opens, written and never read, no sign of use
+  t += 1.7;
+  ["unused_apps", "never_read", "no_sign"].forEach((u, i) => {
+    tl.to(L[u], { autoAlpha: 1, duration: 0.25, ease: E.light }, t + i * 0.7);
+    tl.to(L[u], { clipPath: WIPE1, duration: 0.8, ease: E.beam }, t + i * 0.7);
+    rise("#c" + (i + 1), t + i * 0.7 + 0.1);
+    tl.to(".env .seg-" + u, { scaleX: 1, duration: 0.6, ease: E.slide }, t + i * 0.7 + 0.15);
+  });
+  tl.set(L.use, { autoAlpha: 1 }, t + 2.25);
+  tl.set([L.neutral, L.valid, L.unused_apps, L.never_read, L.no_sign], { autoAlpha: 0 }, t + 2.26);
+  if (matLbls.length) tl.to(matLbls, { autoAlpha: 1, duration: 0.4, ease: E.light, stagger: 0.06 }, t + 1.9);
+  tl.addLabel("s3", t + 2.5);
+
+  // s4: the age filter. The contour wraps every region older than 6 months; it turns --review on the unused ones,
+  // which lift out of every container (the first round); the rest dims; the hero turns to 1,278 GB
+  t += 2.6;
+  if (matLbls.length) tl.to(matLbls, { autoAlpha: 0, duration: 0.35, ease: E.light }, t);
+  tl.to(L.age, { autoAlpha: 1, duration: 0.2, ease: "none" }, t);
+  tl.to(L.age, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease: E.beam }, t);
+  tl.fromTo("#ageLbl", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: E.light, immediateRender: false }, t + 0.7);
+  t += 1.5;
+  tl.to(L.rim, { autoAlpha: 1, duration: 0.45, ease: E.light }, t);
+  tl.to(L.age, { autoAlpha: 0, duration: 0.45, ease: E.light }, t);
+  // the key follows the contour: white "older than 6 months" -> --review "unused and 6+ months old" (storyboard)
+  tl.to("#ageLbl .sw i", { autoAlpha: 1, duration: 0.45, ease: E.light }, t);
+  tl.to("#ageLbl .k1", { autoAlpha: 0, duration: 0.3, ease: E.light }, t);
+  tl.to("#ageLbl .k2", { autoAlpha: 1, duration: 0.45, ease: E.light }, t + 0.2);
+  t += 0.4;
+  tl.set([L.sock, L.plate], { autoAlpha: 1 }, t); tl.set(L.use, { autoAlpha: 0 }, t + 0.01);
+  tl.to(lift, { x: -8 / Z, y: -16 / Z, duration: 0.9, ease: E.lift }, t + 0.05);
+  tl.fromTo(L.shadow, { autoAlpha: 0, x: 0, y: 0 }, { autoAlpha: 1, x: 3 / Z, y: 6 / Z, duration: 0.9, ease: E.lift, immediateRender: false }, t + 0.05);
+  tl.to(L.dim, { autoAlpha: 1, duration: 0.8, ease: E.light }, t + 0.2);
+  tl.to(["#c0", "#c2"], { autoAlpha: 0.3, duration: 0.45 }, t + 0.2);
+  tl.fromTo(".col .fr", { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.6, immediateRender: false }, t + 0.7);
+  tl.to("#heroAll", { autoAlpha: 0, y: -8, duration: 0.45, ease: E.light }, t + 0.5);
+  tl.fromTo("#heroRound", { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.8, immediateRender: false }, t + 0.9);
+  tl.to(".env .tot", { autoAlpha: 0, duration: 0.35, ease: E.light }, t + 1.1);
+  tl.to(".env .fr", { autoAlpha: 1, duration: 0.5, ease: E.light }, t + 1.35);
+  tl.to(".env .seg, .env .base", { opacity: 0.3, duration: 0.5, ease: E.light }, t + 1.2);
+  tl.to(".env .seg-fr", { autoAlpha: 1, duration: 0.2, ease: "none" }, t + 1.35);
+  tl.to(".env .seg-fr", { scaleX: 1, duration: 0.7, ease: E.slide }, t + 1.35);
+  tl.addLabel("s4", t + 2.2);
+
+  // s5: for context, what we usually have free, at the land's scale
+  t += 2.3;
+  tl.to(["#c0", "#c1", "#c2", "#c3"], { autoAlpha: 0, duration: 0.35 }, t);
+  tl.fromTo("#free", { autoAlpha: 0, scale: 0.5 }, { autoAlpha: 1, scale: 1, transformOrigin: "50% 50%", duration: 0.6, ease: E.kindle, immediateRender: false }, t + 0.25);
+  rise("#freeTxt", t + 0.45, 0.6, 8);
+  tl.addLabel("s5", t + 1.2);
+
+  // s6: the opening puzzle with real numbers: A is old but read, B is never read but young
+  t += 1.3;
+  tl.to(["#free", "#freeTxt"], { autoAlpha: 0, duration: 0.4 }, t);
+  tl.to([L.plate, L.shadow], { autoAlpha: 0.35, duration: 0.6 }, t); tl.to(L.rim, { autoAlpha: 0.4, duration: 0.6 }, t);
+  rise("#callA", t + 0.3);
+  tl.to(L.Aglow, { autoAlpha: 1, duration: 0.6, ease: E.light }, t + 0.45);
+  tl.to(gA, { autoAlpha: 1, duration: 0.5, ease: E.kindle }, t + 0.55);
+  rise("#callB", t + 1.0);
+  tl.to(L.Bglow, { autoAlpha: 1, duration: 0.7, ease: E.light }, t + 1.15);
+  tl.to(gB, { autoAlpha: 1, duration: 0.5, ease: E.light }, t + 1.35);
+  tl.addLabel("s6", t + 2.1);
+
+  // s7: not only space: 471 old files from apps that declare PII data, in GCP's first round
+  t += 2.2;
+  tl.to([L.Bglow, L.Aglow, gA, gB, "#callA", "#callB"], { autoAlpha: 0, duration: 0.5 }, t);
+  tl.to([L.plate, L.shadow], { autoAlpha: 0.6, duration: 0.5 }, t); tl.to(L.rim, { autoAlpha: 0.7, duration: 0.5 }, t);
+  tl.to(L.pii, { autoAlpha: 1, duration: 0.7, ease: E.light }, t + 0.15);
+  rise("#pii", t + 0.35);
+  tl.to(gP, { autoAlpha: 1, duration: 0.5, ease: E.light }, t + 0.6);
+  tl.set({}, {}, t + 1.6);
+  tl.addLabel("s7", t + 1.6);
+
+  await $("#icon").decode().catch(() => {});
+  window.__s11 = { h, N, L, Z, LR };
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"]);
+})();
+</script>
+</body>
+</html>

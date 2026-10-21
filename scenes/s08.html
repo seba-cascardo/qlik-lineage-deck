@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S08 · The answer was in the diary</title>
+<!--
+  S08 The answer was in the diary (storyboard v4 S08; plan Task 9; spec 2026-10-20-world-cadastre-design.md §3:
+  camera "diary", the sheet and the map in separate zones; the world API of deck/shared/world/SCENE_BRIEF.md).
+  Three zones from s1 on: the diary (x 96-936, y 160-528), the readout under it (x 96-936, y 556-990: the lens,
+  then the pile of diaries, then the sentence) and the city (x 1000-1824).
+    s0  = S07's end without its headline: camera full, S06-end under a deep veil (0.88), no names, no owner marks,
+        SALES_DB (WORLD.route.db, c51) lit in use, drawn as S07 draws it
+    s1  "Every reload writes a diary" (continuous): the city moves aside (camera diary), the veil lifts to the
+        standard dim and the names come back, a lamp lights the desk, the generator's reload log
+        (foundation/reload-log-generator.txt) slides in and writes itself; only S09's eight lines are legible, the
+        rest is faint texture
+    s2  the clue: the faint lines go, the log folds to the lines that matter, LIB CONNECT TO 'SALES_DB' is marked in
+        red, and the lens under the sheet shows it at twice the size
+    s3  its plain-English meaning in the lens: "connected to a database"
+    s4  the extraction (continuous): SALES_DB is underlined in the lens and travels to its parcel on Data
+        connections; the generator's parcel lights; the bridge Generator app -> SALES_DB, with who, what and when
+    s5  every diary (continuous): the lens closes into the sheet (its note written there), a pile of diaries comes
+        out from under it and fills the readout, pulses run from them to Data connections, all 203 connections
+        appear as parcels and the used ones light while the count builds to 89 of 203 (truth.json connections_onprem)
+    s6  the pile goes back under the diary: "It didn't find the list. It built it."
+
+  Measured 2026-10-21 03:12 (throttle 4, quiet moment, not the serial pass): every sequence 56-60 fps, p95 17-33 ms.
+  Continuity (mean pixel difference): S07 end -> S08 s0 1.06 % night, 1.48 % day; S08 end -> S09 s0 (s09.html 03:09)
+  1.61 % night, 1.40 % day.
+  END STATE = S09's s0 (contract "match", deck/scenes/s09.html as built 2026-10-21 03:09): camera "diary", the world
+  in "S06-end" + "dim" with every base label but the three territories, the "?" in; ONE sheet .sheet at x 96,
+  y 160 (TOP), 840 wide, header "Generator app" + "reload log · 12 Oct 2026 · 06:00", S09's eight rows (SHEET_ROWS)
+  in S09's layout with the db lens open (band T.key 13 %, number and note in T.key, "connected to a database").
+  S08 adds over that: the 89 lit connection parcels, their count block under the island (which replaces the
+  island's own "Data connections" label), and the closing sentence in the readout. S09 adds "the clue from S08".
+  The lit list is connUsed() (the pick) drawn by tiles() on allCv + batchCv + bcv below: S09 can draw the same pixels
+  at its s0 so the list stays lit across the click.
+  Colours only from THEME / the CSS variables of deck/shared/world/theme.js (qa/lint_colors.py).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }                       /* WorldStage mounts the world here */
+  #lamp { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* headline ink from y 54, x 96 */
+  #note { position: absolute; right: 184px; top: 1012px; }     /* bottom band, clear of the icon, baseline > 1032 (= S09) */
+  svg.fx { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+
+  /* ---------------------------------------------------------------- the diary: S09's sheet, one width, one row per line */
+  #pile { position: absolute; left: 0; top: 0; }
+  #pile img, #pile canvas { position: absolute; display: block; visibility: hidden; opacity: 0; }
+  .sheet { position: absolute; left: 96px; top: 0; width: 840px; }
+  .paper { position: absolute; left: 0; top: 0; width: 840px; overflow: hidden; border-radius: 4px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-ink) 9%, transparent),
+      0 18px 46px color-mix(in srgb, var(--paper-ink) 22%, transparent); }
+  .paper > img, .paper > canvas { position: absolute; left: 0; top: 0; display: block; }
+  .shead { position: absolute; left: 24px; right: 24px; top: 14px; height: 36px; white-space: nowrap; }
+  .shead .t { font-size: 28px; line-height: 36px; font-weight: 700; color: var(--paper-ink); }
+  .shead .m { position: absolute; right: 0; top: 2px; font-size: 24px; line-height: 32px; color: var(--paper-ink-faint); }
+  .srule { position: absolute; left: 24px; right: 24px; top: 58px; height: 2px;
+    background: color-mix(in srgb, var(--paper-ink) 12%, transparent); }
+  .row { position: absolute; left: 0; top: 0; width: 840px; height: 28px; white-space: nowrap; }
+  .row .no { position: absolute; left: 20px; width: 48px; text-align: right; font-size: 20px; line-height: 28px;
+    color: var(--paper-ink-faint); font-variant-numeric: tabular-nums; }
+  .row .tx { position: absolute; left: 84px; top: 0; font-size: 20px; line-height: 28px; color: var(--paper-ink-faint); }
+  .row .tx b { font-weight: 700; }
+  .row.hd { opacity: 0.4; }                                    /* the header block, faded to 40 % (= S09) */
+  .row.drop > span { opacity: 0.22; }                           /* lines nobody needs: texture, not something to read */
+  .row.key { height: 36px; }
+  .row.key .no { line-height: 36px; font-size: 20px; }
+  .row.key .tx { font-size: 24px; line-height: 36px; color: var(--paper-ink-dim); }
+  .band { position: absolute; left: 76px; top: 2px; height: 32px; border-radius: 3px; transform-origin: 0 50%; }
+  .note { position: absolute; left: 84px; top: 36px; font-size: 24px; line-height: 34px; font-weight: 500; }
+  .note::before { content: ""; display: inline-block; width: 22px; height: 3px; background: currentColor;
+    vertical-align: 7px; margin-right: 12px; }
+  .nm { position: relative; }
+  .nm i { position: absolute; left: 0; right: 0; bottom: 1px; height: 3px; transform: scaleX(0); transform-origin: 0 50%; }
+
+  /* ---------------------------------------------------------------- the lens: the clue at twice its size, on clear ground */
+  #lens { position: absolute; left: 96px; top: 0; width: 840px; height: 140px; pointer-events: none; }   /* top: set on SALES_DB's row on the map */
+  #lens .lline { position: absolute; left: 0; top: 0; height: 64px; visibility: hidden; opacity: 0; }
+  #lens .lband { position: absolute; left: 0; top: 2px; height: 60px; border-radius: 6px; transform-origin: 0 50%; }
+  #lens .ltx { position: absolute; left: 16px; top: 0; font-size: 48px; line-height: 64px; color: var(--ink); white-space: nowrap; }
+  #lens .ltx b { font-weight: 700; }
+  #lens .lnm { position: relative; }
+  #lens .lnm i { position: absolute; left: 0; right: 0; bottom: 4px; height: 5px; transform: scaleX(0); transform-origin: 0 50%; }
+  #lens .lnote { position: absolute; left: 16px; top: 72px; font-size: 48px; line-height: 60px; font-weight: 500; color: var(--key);
+    white-space: nowrap; visibility: hidden; opacity: 0; }
+  #lens .lnote::before { content: ""; display: inline-block; width: 40px; height: 5px; background: currentColor;
+    vertical-align: 14px; margin-right: 20px; }
+
+  /* ---------------------------------------------------------------- text on the map side: own plates or clear ground */
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  #hud .w-label { position: absolute; left: 0; top: 0; visibility: hidden; opacity: 0; }
+  /* the count of the list, under the island on clear ground (the island's own name moves here: nothing sits on the lit list) */
+  #cblock { position: absolute; left: 0; top: 0; visibility: hidden; opacity: 0; white-space: nowrap; }
+  #cblock .cbl { font-size: 26px; line-height: 34px; font-weight: 500; color: var(--ink); }
+  #cblock .cbl b { font-weight: 700; }
+  #cblock .cbn { font-size: 28px; line-height: 64px; font-weight: 500; color: var(--ink-dim); }
+  .num { color: var(--in-use); font-weight: 700; font-size: 56px; display: inline-block; min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+  #phrase { position: absolute; left: 96px; top: 742px; font-size: 56px; line-height: 66px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  #phrase div { visibility: hidden; opacity: 0; }
+  /* s1's beat, in the open sea above the city (diary camera), gone when the clue is lensed */
+  #cap1 { position: absolute; left: 988px; top: 232px; font-size: 32px; line-height: 40px; font-weight: 500; color: var(--ink-dim);
+    white-space: nowrap; visibility: hidden; opacity: 0; text-shadow: 0 0 2px var(--stage), 0 0 4px var(--stage), 0 0 7px var(--stage); }
+  #phrase .a { color: var(--ink-dim); font-weight: 500; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <canvas id="lamp"></canvas>
+  <div id="sheets"><div id="pile"></div></div>
+  <div id="lens">
+    <div class="lline"><div class="lband"></div><span class="ltx"><b>LIB CONNECT TO</b> '<span class="lnm">SALES_DB<i></i></span>'</span></div>
+    <div class="lnote">connected to a database</div>
+  </div>
+  <svg class="fx" id="fx" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="hud">
+    <div id="lbG" class="w-label w-route">Generator app</div>
+    <div id="lbDB" class="w-label w-route"><b>SALES_DB</b><span class="w-dim"> · 06:00</span></div>
+    <div id="cblock"><div class="cbl"><b>Data connections</b></div><div class="cbn"><span class="num" id="cnt">1</span><span id="cbof"> of 203 in use</span></div></div>
+    <div id="cap1">Every reload writes a diary</div>
+    <div id="phrase"><div class="a">It didn't find the list.</div><div class="b">It built it.</div></div>
+  </div>
+  <h1 class="scene-title">The answer was in the diary</h1>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, E = R.MOTION;
+const $ = (s, el = document) => el.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+$("#icon").src = T.icon;
+const DAY = T.name === "day";
+
+/* ------------------------------------------------------------------ colours, all from tokens (= S09's COL) */
+const COL = { red: T.rgb(T.key), redTint: T.rgba(T.key, 0.13), ink: T.rgb(T.paperInk),
+  lensTint: T.rgba(T.key, DAY ? 0.13 : 0.3) };                  // the lens band on the stage: 13 % reads on paper, not on the night
+
+/* ------------------------------------------------------------------ geometry: S09's s0 */
+const CAM = R.camera("diary");                                  // the city small, to the right (x 1000-1824)
+const scr = (p) => [CAM.x + CAM.scale * p[0], CAM.y + CAM.scale * p[1]];
+const RT = W.route, G = scr(RT.G), DB = scr(RT.DB);
+const TOP = 160, HEAD = 70, TEX = 28, KEY = 36, NOTE = 36, PADB = 14, SW = 840;
+const LENS = { x: 96, y: Math.round(DB[1] - 34) };             // the lens's top-left: its line on SALES_DB's parcel row
+
+/* ------------------------------------------------------------------ the diary: the whole generator log, S09's lines kept */
+// S09's eight rows (deck/scenes/s09.html SHEETS.gen), the same markup, so S08 ends on S09's s0
+const SHEET_ROWS = {
+  hd0: { hd: true, tx: "Execution started." },
+  "0013": { key: "let", tx: "<b>LET</b> vPII = 'Yes'" },
+  "0021": { tx: "// ---- Extract: sales orders ----" },
+  "0022": { key: "db", tx: "<b>LIB CONNECT TO</b> '<span class=\"nm\" data-n=\"db\">SALES_DB<i></i></span>'" },
+  "0024": { tx: "<b>SQL SELECT</b> * FROM dbo.SalesOrders" },
+  "0026": { key: "store", tx: "<b>STORE</b> SalesOrders INTO [lib://<span class=\"nm\" data-n=\"cont\">SalesContainer<i></i></span>/QVD/<span class=\"nm\" data-n=\"file\">sales_orders.qvd<i></i></span>] (qvd)" },
+  "0027": { tx: "<b>DROP TABLE</b> SalesOrders" },
+  "0041": { tx: "<b>DISCONNECT</b>" },
+};
+function parse(lines) {
+  return lines.map((line) => {
+    const rest = line.slice(25), m = rest.match(/^(\d{4})  (.*)$/);
+    return m ? { no: m[1], text: m[2] } : { no: "", text: rest.trim() };
+  });
+}
+// the audience never saw a reload log: a real working document, without the server block that crowds it
+const SKIP_HEADER = /^(CPU Target|Operating System|Wow64 mode|PreferredLocale|EnableParallelReload|Process Executing|Process ID|Reload Executed By)/;
+const SKIP = new Set(["0003", "0005", "0023"]);
+const KW = ["LIB CONNECT TO", "STORE", "LOAD", "LET", "SET", "SQL SELECT", "DROP TABLE", "DISCONNECT"];
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const sheetEl = document.createElement("div"); sheetEl.className = "sheet";
+const paperEl = document.createElement("div"); paperEl.className = "paper"; sheetEl.appendChild(paperEl);
+sheetEl.insertAdjacentHTML("beforeend", `<div class="shead"><span class="t">Generator app</span><span class="m">reload log · 12 Oct 2026 · 06:00</span></div><div class="srule"></div>`);
+$("#sheets").appendChild(sheetEl);                              // after #pile: the pile of diaries lies under this one
+const rows = [];
+{
+  const all = parse(window.LOGS.generator), firstNo = all.findIndex((r) => r.no);
+  all.forEach((r, i) => {
+    const isHead = i < firstNo;
+    if (isHead && i > 1 && SKIP_HEADER.test(r.text)) return;
+    if (r.no && SKIP.has(r.no)) return;
+    const keepKey = isHead ? (i === 0 ? "hd0" : null) : (r.no && SHEET_ROWS[r.no] ? r.no : null);
+    const def = keepKey ? SHEET_ROWS[keepKey] : null;
+    let tx;
+    if (def) tx = def.tx;
+    else if (isHead) { const m = r.text.match(/^(.*?)\s{2,}(.*)$/); tx = m ? `${esc(m[1])} ${esc(m[2])}` : esc(r.text); }
+    else { tx = esc(r.text); for (const k of KW) if (r.text.startsWith(k)) { tx = `<b>${esc(k)}</b>${esc(r.text.slice(k.length))}`; break; } }
+    const row = document.createElement("div");
+    row.className = "row" + (isHead ? " hd" : "") + (def && def.key ? " key" : "") + (def ? "" : " drop");
+    if (def && def.key) row.insertAdjacentHTML("beforeend", `<div class="band"></div>`);
+    row.insertAdjacentHTML("beforeend", `<span class="no">${isHead ? "" : r.no}</span><span class="tx">${tx}</span>`);
+    const item = { el: row, keep: !!def, key: def ? def.key || null : null, h: def && def.key ? KEY : TEX, tx: $(".tx", row), no: $(".no", row) };
+    if (item.key) {
+      if (item.key === "db") row.insertAdjacentHTML("beforeend", `<div class="note"><span class="nt">connected to a database</span></div>`);
+      item.band = $(".band", row); item.note = $(".note", row);
+      item.names = Object.fromEntries([...row.querySelectorAll(".nm")].map((e) => [e.dataset.n, e]));
+    }
+    sheetEl.appendChild(row);
+    rows.push(item);
+  });
+}
+if (rows.filter((r) => r.keep).length !== Object.keys(SHEET_ROWS).length) throw new Error("S08: S09's rows not all found in the log");
+const dbR = rows.find((r) => r.key === "db");
+// the whole log (s1), the folded sheet (s2-s4: the clue is read in the lens) and S09's sheet with the note open (s5 on)
+function layout(open, folded) {
+  let y = HEAD; const ys = [];
+  for (const r of rows) { ys.push(y); if (!folded || r.keep) y += r.h + (r.key && open.includes(r.key) ? NOTE : 0); }
+  return { ys, h: y + PADB };
+}
+const LONG = layout([], false), FOLD0 = layout([], true), FOLD = layout(["db"], true);
+
+/* ------------------------------------------------------------------ paper, lamp, the pile of diaries (canvas, dithered, frozen) */
+function paperCanvas(w, h, seed) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"), id = g.createImageData(w, h), d = id.data, rn = R.mulberry32(seed);
+  const [pr, pg, pb] = T.channels(T.paper);
+  for (let y = 0; y < h; y++) {
+    const fy = Math.min(1, y / 488), dk = 9 * fy * fy;              // S09's paper light, over its own height
+    for (let x = 0; x < w; x++) {
+      const fx = Math.abs(x - w / 2) / (w / 2), n = (rn() - 0.5) * 2, k = (y * w + x) * 4, s = dk + 4 * fx * fx;
+      d[k] = pr - s + n; d[k + 1] = pg - s + n; d[k + 2] = pb - s + n; d[k + 3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0);
+  return c;
+}
+const paper = paperCanvas(SW, LONG.h, 31);
+paperEl.appendChild(paper);
+// the lamp: a dithered pool of the paper's light on the desk, centred under the diary so it spills over the readout
+const lamp = $("#lamp");
+{
+  const k = 0.5, w = 960, h = 540;
+  const c = R.glow(w, h, 516 * k, 640 * k, 760 * k, 520 * k, T.paper, DAY ? 0.5 : 0.11, 11);
+  lamp.width = w; lamp.height = h;
+  lamp.style.width = "1920px"; lamp.style.height = "1080px";   // R.freeze keeps the inline size (else 960 x 540, top-left)
+  lamp.getContext("2d").drawImage(c, 0, 0);
+}
+// the pile (s5): every reload's diary, small, one aqua line each (its LIB CONNECT), strewn over the readout under the
+// sheet: 24 x 10 pages in x 96-936, y 562-988, overlapping, each turned a little and at its own depth; drawn in
+// 10 rows x 4 segments, each its own frozen image (they come out from under the sheet row after row)
+const PG = { cols: 24, rows: 10, w: 40, h: 52, x0: 96, x1: 936, y0: 562, y1: 988 };
+PG.px = (PG.x1 - PG.x0 - PG.w) / (PG.cols - 1); PG.py = (PG.y1 - PG.y0 - PG.h) / (PG.rows - 1);
+const SEGS = [[0, 6], [6, 12], [12, 18], [18, 24]];
+const mixC = (a, b, k) => { const A = T.channels(a), B = T.channels(b); return A.map((v, i) => Math.round(v * k + B[i] * (1 - k))); };
+const pages = [];                                               // {ax, ay: the right end of its aqua line, r, s}
+const segCv = [];
+{
+  const res = 2, rn = R.mulberry32(808), PAD = 8;
+  for (let r = 0; r < PG.rows; r++) SEGS.forEach(([c0, c1], s) => {
+    // the pages of this segment, placed first (jittered inside the readout, edges kept at x 96 and 936)
+    const list = [];
+    for (let c = c0; c < c1; c++) {
+      const jx = (rn() - 0.5) * 8, jy = (rn() - 0.5) * 8, rot = (rn() - 0.5) * 0.16;
+      const x = Math.max(PG.x0 + 3, Math.min(PG.x1 - PG.w - 3, PG.x0 + c * PG.px + jx));
+      const y = Math.max(PG.y0 + 2, Math.min(PG.y1 - PG.h - 2, PG.y0 + r * PG.py + jy));
+      // depth: the farther from the diary, the deeper in the dark (a pile spreading out, not a block)
+      const depth = r / (PG.rows - 1), v = 0.75 + 0.25 * rn();
+      list.push({ x, y, rot, k: DAY ? 1 - (0.12 + 0.45 * depth) * v : (0.17 - 0.1 * depth) * v, aq: 1 - 0.5 * depth, hit: 2 + Math.floor(rn() * 5), z: rn() });
+    }
+    list.sort((a, b) => a.z - b.z);
+    const bx = Math.min(...list.map((q) => q.x)) - PAD, by = Math.min(...list.map((q) => q.y)) - PAD;
+    const bw = Math.max(...list.map((q) => q.x)) + PG.w + PAD - bx, bh = Math.max(...list.map((q) => q.y)) + PG.h + PAD - by;
+    const cv = document.createElement("canvas"); cv.width = Math.ceil(bw * res); cv.height = Math.ceil(bh * res);
+    cv.style.cssText = `left:${bx}px;top:${by}px;width:${cv.width / res}px;height:${cv.height / res}px`;
+    const g = cv.getContext("2d");
+    for (const q of list) {
+      const cx = q.x + PG.w / 2, cy = q.y + PG.h / 2;
+      g.setTransform(res, 0, 0, res, -bx * res, -by * res); g.translate(cx, cy); g.rotate(q.rot); g.translate(-PG.w / 2, -PG.h / 2);
+      g.fillStyle = T.rgb(mixC(T.paper, T.stage, q.k));
+      g.beginPath(); g.roundRect(0, 0, PG.w, PG.h, 2.5); g.fill();
+      g.strokeStyle = DAY ? T.rgba(T.paperInk, 0.2) : T.rgba(T.stage, 0.85); g.lineWidth = 1.2; g.stroke();
+      for (let j = 0; j < 8; j++) {
+        const ly = 7 + j * 5.4, indent = j > 0 && rn() < 0.3 ? 6 : 0;
+        if (j === q.hit) {
+          const l = (PG.w - 11) * (0.6 + rn() * 0.35);
+          g.fillStyle = T.rgba(T.inUse, q.aq); g.fillRect(5.5, ly - 1.2, l, 2.4);
+          // its end in screen space (the page is turned by rot about its centre)
+          const ex = 5.5 + l - PG.w / 2, ey = ly - PG.h / 2, cs = Math.cos(q.rot), sn = Math.sin(q.rot);
+          pages.push({ ax: cx + ex * cs - ey * sn, ay: cy + ex * sn + ey * cs, r, s });
+        } else {
+          const len = (PG.w - 11 - indent) * (0.3 + rn() * 0.65);
+          g.fillStyle = DAY ? T.rgba(T.paperInkFaint, 0.45 * q.aq) : T.rgba(T.paper, 0.1 + q.k * 0.9); g.fillRect(5.5 + indent, ly - 0.75, len, 1.5);
+        }
+      }
+    }
+    $("#pile").appendChild(cv);
+    segCv.push({ cv, r, s, rank: r * SEGS.length + s });
+  });
+}
+
+/* ------------------------------------------------------------------ the lit list of connections (S09 can draw the same) */
+// all 203 connections as parcels; the 89 in use (truth.json connections_onprem.used) are S09's 89: the same seeded
+// pick (mulberry32(909), Fisher-Yates, SALES_DB first). The build draws them on canvases in world units: all 203 in
+// --no-sign, then the in-use ones in K batches by the time they light, and their bloom
+function connUsed() {
+  const conn = W.conn.parcels, ids = conn.map((p) => p.id).filter((id) => id !== RT.db), rn = R.mulberry32(909);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rn() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  return [RT.db].concat(ids.slice(0, TRUTH.connections_onprem.used - 1)).map((id) => R.parcel(id));
+}
+
+/* ------------------------------------------------------------------ build */
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { state: "S06-end" });
+  h.setState("dim");
+  h.veil.style.willChange = "opacity";                          // its own layer: s1 fades it from S07's 0.88 to 0.6 (as S07)
+  const L = h.labels, labelOf = (id) => L.get(id);
+  const terr = ["terr-On-prem", "terr-GCP", "terr-AWS"].map(labelOf);
+  const shown = [...L.values()].filter((el) => !terr.includes(el));   // S09's s0: every name but the territories
+  const connLab = labelOf("connections"), contLab = labelOf("containers");
+
+  await Promise.all(["400 20px Vodafone", "700 20px Vodafone", "400 24px Vodafone", "500 24px Vodafone", "700 24px Vodafone",
+    "700 28px Vodafone", "500 28px Vodafone", "500 26px Vodafone", "700 26px Vodafone", "400 48px Vodafone", "700 48px Vodafone",
+    "500 48px Vodafone", "500 56px Vodafone", "700 56px Vodafone"].map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+  for (const r of rows) if (r.band) r.band.style.width = r.tx.offsetWidth + 16 + "px";
+  const ltx = $("#lens .ltx"), lband = $("#lens .lband");
+  lband.style.width = ltx.offsetWidth + 32 + "px";
+
+  // ---- the overlay on the city, ABOVE the veil (not dimmed), moved by the same camera as h.world (= S07's #top)
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;transform-origin:0 0;pointer-events:none";
+  h.container.insertBefore(ov, h.labelsEl);
+  gsap.set(ov, R.camera("full"));
+  const osvg = svgEl("svg", { width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, ov);
+  osvg.style.cssText = "position:absolute;left:0;top:0;overflow:visible";
+  const polyD = (p) => "M" + p.map((q) => q.join(",")).join(" L") + " Z";
+  const conn = W.conn.parcels, USED = TRUTH.connections_onprem.used, TOTAL = TRUTH.connections_onprem.total;
+  if (conn.length !== TOTAL) throw new Error(`S08: ${conn.length} connection parcels, truth.json says ${TOTAL}`);
+  const used = connUsed();
+  if (used.length !== USED) throw new Error("S08: the lit list is not 89");
+  // drawn once on canvases and frozen (an SVG of 290 parcels repainted every frame cost 35 fps at 4x throttle)
+  const worldCv = (rect, res) => {
+    const cv = document.createElement("canvas"); cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res);
+    cv.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+    ov.insertBefore(cv, osvg); return cv;
+  };
+  const tileRect = { x: 255, y: 772, w: 578, h: 220 }, tres = 2;
+  const tiles = (cv, list, fill, alpha) => {
+    const ctx = cv.getContext("2d");
+    R.parcels(ctx, tileRect, tres, list, { fill, alpha });
+    R.parcels(ctx, tileRect, tres, list, { stroke: T.sea, width: 1.4 });
+  };
+  const allCv = worldCv(tileRect, tres);
+  tiles(allCv, conn, T.noSign, 0.6);
+  const N = used.length, A = 2.2, K = 10;
+  const tau = (i) => A * Math.sqrt((i - 1) / (N - 2));          // parcel i (1..N-1) lights at T0 + tau(i): slow, then all at once
+  const batchOf = (i) => Math.min(K - 1, Math.floor((tau(i) / A) * K));
+  const batches = Array.from({ length: K }, () => []);
+  for (let i = 1; i < N; i++) batches[batchOf(i)].push(used[i]);
+  const batchCv = batches.map((list) => { const cv = worldCv(tileRect, tres); tiles(cv, list, T.inUse, 1); return cv; });
+  const bloomRect = { x: 230, y: 750, w: 640, h: 270 }, bres = 2;
+  const bcv = worldCv(bloomRect, bres);
+  R.bloomCells(bcv.getContext("2d"), used.map((p) => p.p), T.inUse, 0.55, 16, bloomRect, bres);
+  // SALES_DB (c51) lit in use as S07 leaves it ("How did it know?"): S07's own drawing, so the cross-fade holds still
+  const dbRect = { x: RT.DB[0] - 60, y: RT.DB[1] - 50, w: 120, h: 100 };
+  const dbCv = worldCv(dbRect, 2);
+  { const ctx = dbCv.getContext("2d"); R.bloomCells(ctx, [used[0].p], T.inUse, 1, 14, dbRect, 2, 8); R.parcels(ctx, dbRect, 2, [RT.db], { fill: T.inUse, alpha: 0.95 }); }
+  // the generator that wrote this diary (WORLD.route.gen): kindled in the same light as SALES_DB, the "who" of the bridge
+  const genP = R.parcel(RT.gen), gb = R.bb(genP.p);
+  const genRect = { x: gb[0] - 50, y: gb[1] - 50, w: gb[2] - gb[0] + 100, h: gb[3] - gb[1] + 100 };
+  const genCv = worldCv(genRect, 2);
+  { const ctx = genCv.getContext("2d"); R.bloomCells(ctx, [genP.p], T.inUse, 1, 14, genRect, 2, 8); R.parcels(ctx, genRect, 2, [RT.gen], { fill: T.inUse, alpha: 0.95 }); }
+  const br = R.lightBridge(osvg, RT.bridges.find((b) => b.id === "db"), { arrow: true, core: 8 });
+  const brPaths = [...br.g.querySelectorAll("path")], brArrow = brPaths.pop();
+  const ring = svgEl("circle", { cx: RT.DB[0], cy: RT.DB[1], r: 10, fill: "none", stroke: T.inUse, "stroke-width": 5 }, osvg);
+  const ringG = svgEl("circle", { cx: RT.G[0], cy: RT.G[1], r: 10, fill: "none", stroke: T.inUse, "stroke-width": 5 }, osvg);
+  // the "who" end of the bridge: a mark on the generator (S09's route dot, sized for the diary camera)
+  const dotG = svgEl("g", {}, osvg);
+  svgEl("circle", { cx: RT.G[0], cy: RT.G[1], r: 20, fill: T.rgba(T.inUse, 0.3) }, dotG);
+  svgEl("circle", { cx: RT.G[0], cy: RT.G[1], r: 8.5, fill: T.rgb(T.app), stroke: T.inUse, "stroke-width": 3.2 }, dotG);
+
+  // ---- the extraction's path: from SALES_DB in the lens, across the free gap, to its parcel on the map
+  const lnm = $("#lens .lnm");
+  const S = [LENS.x + ltx.offsetLeft + ltx.offsetWidth + 16, LENS.y + 34];
+  const fx = $("#fx");
+  $("#lens").style.top = LENS.y + "px";
+  const travelD = `M${S[0]},${S[1]} L${DB[0]},${DB[1]}`;         // one straight line: the name lands on its parcel
+  const travelGlow = svgEl("path", { d: travelD, fill: "none", stroke: T.inUse, "stroke-width": 12, "stroke-opacity": 0.22 * T.halo, "stroke-linecap": "round" }, fx);
+  const travel = svgEl("path", { d: travelD, fill: "none", stroke: T.inUse, "stroke-width": 4, "stroke-linecap": "round" }, fx);
+
+  // ---- labels of S08 (screen space, own plates)
+  const placeAt = (el, x, y, ax, ay) => gsap.set(el, { x: x - ax * el.offsetWidth, y: y - ay * el.offsetHeight });
+  placeAt($("#lbG"), G[0] - 30, G[1] + 12, 1, 0);           // clear of the bridge that leaves G downward
+  placeAt($("#lbDB"), DB[0], DB[1] + 16, 0.5, 0);
+  // the count block under the island, on clear ground, left edge on the island's west coast
+  const cb = R.bb(W.conn.poly), cTL = scr([cb[0], cb[3]]);
+  $("#cbof").textContent = ` of ${TOTAL} in use`;
+  const cblock = $("#cblock");
+  gsap.set(cblock, { x: Math.round(cTL[0] + 6), y: Math.round(cTL[1] + 14) });
+
+  // ---- the pulses (s5): from a diary's aqua line to the parcel that lights when it lands; 2 per batch window
+  const T5 = { pile: 0.4, pileDur: 0.95, T0: 1.5 };            // s5's clock, relative to its start
+  const segAt = (rank) => T5.pile + T5.pileDur * Math.sqrt(rank / (segCv.length - 1));   // when a segment of the pile is out
+  const rp = R.mulberry32(4242), PULSES = [];
+  for (let b = 0; b < K; b++) for (let q = 0; q < 2; q++) {
+    const land = T5.T0 + (b * A) / K, d = 0.7, start = land - d;
+    let ready = pages.filter((p) => segAt(p.r * SEGS.length + p.s) + 0.25 < start);
+    if (!ready.length) ready = pages.filter((p) => p.r === 0 && p.s === 0);
+    const src = ready[Math.floor(rp() * ready.length)], dst = scr(batches[b][Math.floor(rp() * batches[b].length)].c);
+    const cx = 960 + (rp() - 0.5) * 60, cy = (src.ay + dst[1]) / 2 + (rp() - 0.5) * 80;
+    const path = svgEl("path", { d: `M${src.ax.toFixed(1)},${src.ay.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${dst[0].toFixed(1)},${dst[1].toFixed(1)}`,
+      fill: "none", stroke: T.inUse, "stroke-width": 3.5, "stroke-linecap": "round" }, fx);
+    PULSES.push({ path, start, d });
+  }
+
+  // ---- freeze the canvases: the timeline animates their images (R.fz)
+  await R.freeze([paper, bcv, lamp, allCv, ...batchCv, dbCv, genCv, ...segCv.map((s) => s.cv)]);
+  const lampI = R.fz(lamp), bloomI = R.fz(bcv), allI = R.fz(allCv), batchI = batchCv.map((c) => R.fz(c)), genI = R.fz(genCv);
+  for (const s of segCv) s.img = R.fz(s.cv);
+
+  /* ---------------------------------------------------------------- s0: the dimmed city at camera full, no diary yet */
+  // s0 = S07's end: the world deeply dimmed (veil 0.88), no names, no owner marks, SALES_DB lit; the names wait at
+  // diary (a label is placed by its transform, never tweened) and come back with the owners once the dolly ends
+  h.place("diary");
+  // the names come back as one layer (a composited fade of the container, not eleven plates repainted per frame)
+  gsap.set([...L.values()], { autoAlpha: 0 });
+  gsap.set(shown, { autoAlpha: 1 });
+  gsap.set(h.labelsEl, { autoAlpha: 0 });
+  rows.forEach((r, i) => gsap.set(r.el, { y: LONG.ys[i], clipPath: "inset(0px 100% 0px 0px)" }));
+  gsap.set(sheetEl, { y: TOP + 1000 });
+  gsap.set(paperEl, { height: LONG.h });
+  for (const r of rows) if (r.key) {
+    gsap.set(r.band, { scaleX: 0, backgroundColor: COL.redTint });
+    for (const n of Object.values(r.names)) gsap.set(n.querySelector("i"), { backgroundColor: COL.red });
+  }
+  gsap.set(dbR.note, { autoAlpha: 0, color: COL.red });
+  gsap.set(lband, { scaleX: 0, backgroundColor: COL.lensTint });
+  gsap.set(lnm.querySelector("i"), { scaleX: 0, backgroundColor: COL.red });
+  gsap.set(lampI, { autoAlpha: 0 });
+  gsap.set(segCv.map((s) => s.img), { autoAlpha: 0 });
+  // round caps draw a dot at 0 %: every line stays hidden until it starts drawing
+  gsap.set(h.veil, { autoAlpha: 0.88 });
+  gsap.set(h.layers.owners, { autoAlpha: 0 });
+  gsap.set([genI, dotG, allI, ...batchI, bloomI, ring, ringG, br.g, brArrow, travelGlow, travel], { autoAlpha: 0 });
+  gsap.set([travel, travelGlow, ...brPaths], { drawSVG: "0%" });
+  gsap.set(PULSES.map((p) => p.path), { autoAlpha: 0, drawSVG: "0% 0%" });
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+
+  /* ---------------------------------------------------------------- s1: every reload writes a diary (continuous) */
+  let t = 0;
+  // movers get their own layer while they move, and give it back at rest (re-rastered crisp at the new scale)
+  tl.set([h.world, ov, sheetEl, lampI, h.labelsEl], { willChange: "transform, opacity" }, t + 0.01);
+  tl.to([h.world, ov], { ...CAM, duration: 1.8, ease: E.dolly }, t);
+  tl.to(h.veil, { autoAlpha: WorldStage.DIM, duration: 1.2, ease: E.light }, t + 0.6);
+  tl.to(lampI, { autoAlpha: 1, duration: 1.0, ease: E.light }, t + 0.5);
+  tl.to(sheetEl, { y: TOP, duration: 1.25, ease: E.slide }, t + 0.7);
+  tl.set([h.world, ov, lampI], { willChange: "auto" }, t + 2.0);
+  tl.to(h.labelsEl, { autoAlpha: 1, duration: 0.6, ease: E.light }, t + 1.7);
+  tl.set(h.labelsEl, { willChange: "auto" }, t + 2.35);
+  tl.set(h.layers.owners, { autoAlpha: 1 }, t + 1.8);          // tiny at diary, under the veil: no fade needed
+  tl.to(rows.map((r) => r.el), { clipPath: "inset(0px 0% 0px 0px)", duration: 0.3, ease: "power1.out", stagger: 0.055 }, t + 1.55);
+  tl.set(rows.map((r) => r.el), { clipPath: "none" }, t + 3.2);   // the clue's note sits below its row's box
+  tl.set(sheetEl, { willChange: "auto" }, t + 3.3);            // a layer while it slides and writes itself
+  tl.fromTo("#cap1", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: E.rise, immediateRender: false }, t + 2.3);
+  tl.addLabel("s1", t + 3.4);
+
+  /* ---------------------------------------------------------------- s2: the clue; the log folds to the lines that matter */
+  t = tl.labels.s1;
+  const drop = rows.filter((r) => !r.keep).map((r) => r.el);
+  tl.to(drop, { autoAlpha: 0, duration: 0.35, ease: E.light }, t);
+  tl.to("#cap1", { autoAlpha: 0, duration: 0.35, ease: E.light }, t);
+  rows.forEach((r, i) => { if (r.keep && Math.abs(FOLD0.ys[i] - LONG.ys[i]) > 0.1) tl.to(r.el, { y: FOLD0.ys[i], duration: 0.75, ease: E.lens }, t + 0.15); });
+  tl.to(paperEl, { height: FOLD0.h, duration: 0.75, ease: E.lens }, t + 0.15);
+  tl.fromTo(dbR.band, { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: E.mark, immediateRender: false }, t + 0.6);
+  tl.to(dbR.tx, { color: COL.ink, duration: 0.3, ease: E.light }, t + 0.55);
+  tl.to(dbR.no, { color: COL.red, duration: 0.3, ease: E.light }, t + 0.55);
+  // the lens: the same line at twice its size, on the clear ground under the sheet; both bands sweep together
+  tl.fromTo("#lens .lline", { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: E.rise, immediateRender: false }, t + 0.5);
+  tl.fromTo(lband, { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: E.mark, immediateRender: false }, t + 0.62);
+  tl.addLabel("s2", t + 1.35);
+
+  /* ---------------------------------------------------------------- s3: its meaning in plain English, in the lens */
+  t = tl.labels.s2;
+  tl.fromTo("#lens .lnote", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: E.rise, immediateRender: false }, t + 0.05);
+  tl.addLabel("s3", t + 0.75);
+
+  /* ---------------------------------------------------------------- s4: the extraction: who, what, when (continuous) */
+  t = tl.labels.s3;
+  const ul = lnm.querySelector("i");
+  tl.to(ul, { scaleX: 1, duration: 0.45, ease: E.mark }, t);
+  tl.to([connLab, contLab], { autoAlpha: 0, duration: 0.4, ease: E.light }, t + 0.2);   // room for SALES_DB · 06:00
+  tl.set([travel, travelGlow], { autoAlpha: 1 }, t + 0.4);
+  tl.to([travel, travelGlow], { drawSVG: "100%", duration: 1.0, ease: E.beam }, t + 0.4);
+  tl.fromTo(ring, { autoAlpha: 1, attr: { r: 10 } }, { autoAlpha: 0, attr: { r: 46 }, duration: 0.9, ease: "power2.out", immediateRender: false }, t + 1.35);
+  tl.to(genI, { autoAlpha: 1, duration: 0.5, ease: E.kindle }, t + 1.45);
+  tl.fromTo(dotG, { autoAlpha: 0, scale: 0.2, transformOrigin: "50% 50%" }, { autoAlpha: 1, scale: 1, transformOrigin: "50% 50%", duration: 0.5, ease: E.kindle, immediateRender: false }, t + 1.45);
+  tl.fromTo(ringG, { autoAlpha: 1, attr: { r: 10 } }, { autoAlpha: 0, attr: { r: 46 }, duration: 0.9, ease: "power2.out", immediateRender: false }, t + 1.45);
+  tl.set(br.g, { autoAlpha: 1 }, t + 1.55);
+  tl.to(brPaths, { drawSVG: "100%", duration: 0.8, ease: E.beam }, t + 1.55);
+  tl.to(brArrow, { autoAlpha: 1, duration: 0.3 }, t + 2.1);
+  tl.to($("#lbG"), { autoAlpha: 1, duration: 0.5, ease: E.rise }, t + 1.65);
+  tl.to($("#lbDB"), { autoAlpha: 1, duration: 0.5, ease: E.rise }, t + 1.8);
+  tl.addLabel("s4", t + 2.65);
+
+  /* ---------------------------------------------------------------- s5: every diary, every connection (continuous) */
+  t = tl.labels.s4;
+  tl.to([travel, travelGlow, $("#lbG"), $("#lbDB"), genI, dotG, brArrow, ...brPaths], { autoAlpha: 0, duration: 0.45, ease: E.light }, t);
+  tl.to(ul, { scaleX: 0, duration: 0.4, ease: E.light }, t);
+  // the lens closes into the sheet: its note is written where S09 keeps it, the rows below make room
+  tl.fromTo("#lens .lline, #lens .lnote", { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -16, duration: 0.4, ease: E.light, immediateRender: false }, t + 0.05);
+  rows.forEach((r, i) => { if (r.keep && Math.abs(FOLD.ys[i] - FOLD0.ys[i]) > 0.1) tl.to(r.el, { y: FOLD.ys[i], duration: 0.6, ease: E.lens }, t + 0.1); });
+  tl.to(paperEl, { height: FOLD.h, duration: 0.6, ease: E.lens }, t + 0.1);
+  tl.fromTo(dbR.note, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: E.rise, immediateRender: false }, t + 0.3);
+  // the pile of diaries comes out from under the sheet, row after row, faster and faster
+  // force3D off: a 3D layer per page segment rasterises at sub-pixel offsets mid-move, so a frame reached by playing
+  // differed from the same frame reached by a seek (measured: 340 px, one segment 1 px apart)
+  for (const s of segCv) tl.fromTo(s.img, { autoAlpha: 0, y: -18 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: E.slide, force3D: false, immediateRender: false }, t + segAt(s.rank));
+  // all 203 connections; the island's name moves under it, with the count
+  tl.to(allI, { autoAlpha: 1, duration: 0.5, ease: E.light }, t + 0.35);
+  tl.to(contLab, { autoAlpha: 1, duration: 0.5, ease: E.rise }, t + 0.45);
+  tl.fromTo(cblock, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.5, ease: E.rise, immediateRender: false }, t + 0.6);
+  const T0 = t + T5.T0, cnt = $("#cnt");
+  // batch k lights when its window opens; the count follows the parcels one by one (tau)
+  batchI.forEach((b, k) => tl.to(b, { autoAlpha: 1, duration: 0.2, ease: E.kindle }, T0 + (k * A) / K));
+  const proxy = { v: 0 };
+  tl.fromTo(proxy, { v: 0 }, { v: 1, duration: A, ease: "none", immediateRender: false,
+    onUpdate() { cnt.textContent = String(Math.min(N, 1 + Math.floor((N - 1) * proxy.v * proxy.v + 1e-6))); } }, T0);
+  tl.to(bloomI, { autoAlpha: 1, duration: 0.8, ease: E.light }, T0 + A - 0.3);
+  // the pulses: each shown by tl.set and travelling by drawSVG, so every frame stays a function of time
+  for (const p of PULSES) {
+    tl.set(p.path, { autoAlpha: 1 }, t + p.start);
+    tl.fromTo(p.path, { drawSVG: "0% 12%" }, { drawSVG: "88% 100%", duration: p.d, ease: "power1.in", immediateRender: false }, t + p.start);
+    tl.set(p.path, { autoAlpha: 0 }, t + p.start + p.d);
+  }
+  tl.addLabel("s5", T0 + A + 0.5);
+
+  /* ---------------------------------------------------------------- s6: the pile goes back under the diary; the sentence */
+  t = tl.labels.s5;
+  // one layer each (the pile as a whole, the lamp): two composited fades, not forty images repainted per frame
+  tl.set(["#pile", lampI], { willChange: "transform, opacity" }, t + 0.01);
+  tl.fromTo("#pile", { autoAlpha: 1, y: 0 }, { autoAlpha: 0, y: -16, duration: 0.45, ease: E.light, immediateRender: false }, t);
+  tl.to(lampI, { autoAlpha: 0, duration: 1.0, ease: E.light }, t + 0.2);
+  tl.set(["#pile", lampI], { willChange: "auto" }, t + 1.3);
+  tl.fromTo("#phrase .a", { y: 10, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: E.rise, immediateRender: false }, t + 0.5);
+  tl.fromTo("#phrase .b", { y: 10, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: E.rise, immediateRender: false }, t + 1.05);
+  tl.set({}, {}, t + 1.8);
+  tl.addLabel("s6", t + 1.8);
+
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5", "s6"]);
+})();
+</script>
+</body>
+</html>

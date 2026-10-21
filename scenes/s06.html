@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S06 · The map we need</title>
+<!--
+  S06 "The map we need" (storyboard v4; Task 5 of docs/plans/2026-10-20-night-map-deck.md, world of
+  docs/superpowers/specs/2026-10-20-world-cadastre-design.md §4). One click, one continuous sequence (~11 s):
+    s0  = S04's end (WorldStage "S04-end", camera full): the city lit, the detached islands dark, the "?" in the river
+    s1  the city shrinks to the left (camera CAM6 below: zoom 0.78, the Apps label stays on x 96 under the title);
+        the needed links draw dashed (--in-use, 55 %): the second (south) port, the land's and Data connections' links
+        to it, then Generators -> Front ends across the "?"; an owner ring on every stream district, half of them
+        filled ("Ops, in progress"); then the three stakes, each beside the place it is about and led to it, entering
+        bottom-up in the spoken order: Space (the containers land: its coast traced from the leader's point), PII data
+        (the land's old files: the "6+ months" half of every container, spec §3, tinted in a ripple), Owners (the
+        owner rings ping outward from the leader's ring).
+  End state = WorldStage "S06-end" (needed + owners half, "?" still there) at camera CAM6, plus the stakes, their
+  leaders and marks, and the legend. S07 starts from this map, dimmed, at CAM6 (s07.html, 2026-10-21): the scene
+  contract's "full" for S06 is CAM6 in practice.
+  Local to this scene (shared files are read-only): the camera CAM6 and a map rect that covers it; the gf crossing
+  re-cut for the "?" at CAM6 (the shared one is cut for camera full); the owner marks counter-scaled so they keep
+  their camera-full size on screen, those touching a label plate at CAM6 moved within their district (S07 copies
+  these two blocks); the dashed links drawn through an alpha mask (DrawSVG on the mask path); on day, the dashes
+  (55 % -> 85 %) and the owners' dots (--ink-dim -> --ink) a step stronger (review: they vanished at 720p).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* the headlines' line box; ink from y 55 here (no l or i: T and h start 1 px lower), x 96 */
+  #note { position: absolute; right: 184px; top: 1012px; }
+
+  /* ---- the legend: the footer band, on the note's baseline */
+  #legend { position: absolute; left: 96px; top: 1012px; display: flex; align-items: center; gap: 44px; }
+  .lg { display: flex; align-items: center; gap: 14px; }
+  .lg svg { display: block; overflow: visible; }
+  .lg-deck { stroke: var(--stage); stroke-width: 12; fill: none; }
+  .lg-rail { stroke: var(--ink-faint); stroke-opacity: .6; stroke-width: 2; fill: none; stroke-linecap: round; }
+  .lg-need { stroke: var(--in-use); stroke-opacity: .55; stroke-width: 3.2; stroke-dasharray: 10 7.4; fill: none; stroke-linecap: round; }
+  .lg-ring { fill: none; stroke: var(--ink-faint); stroke-opacity: .85; stroke-width: 1.5; }
+  .lg-dot { fill: var(--ink-dim); }
+  [data-theme="day"] .lg-need { stroke-opacity: .85; }
+  [data-theme="day"] .lg-dot { fill: var(--ink); }
+
+  /* ---- the stakes: on open sea right of the city at CAM6, each beside (and led to) the place it is about.
+     Their tops are set by the script: Owners level with the islands' tops, Space's last baseline on the
+     territories' (On-prem, GCP, AWS), PII data midway */
+  .stake { position: absolute; left: 1480px; top: 0; width: 344px; }
+  .stake h2 { margin: 0; font-size: 36px; line-height: 44px; font-weight: 700; color: var(--ink); }
+  .stake p { margin: 6px 0 0; font-size: 26px; line-height: 34px; font-weight: 400; color: var(--ink-dim); }
+  #lead { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+  #lead .ld { fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; }
+  #lead .dt { fill: var(--ink); }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">The map we need</h1>
+
+  <svg id="lead" viewBox="0 0 1920 1080"></svg>
+  <div class="stake" id="st-own"><h2>Owners</h2><p>can't see Production folders:<br>Ops moves the data</p></div>
+  <div class="stake" id="st-pii"><h2>PII data</h2><p>old files may keep it<br>past retention</p></div>
+  <div class="stake" id="st-space"><h2>Space</h2><p>usually less than 100 GB free</p></div>
+
+  <div id="legend" class="w-foot">
+    <div class="lg" id="lg-have"><svg width="44" height="16" viewBox="0 0 44 16"><path class="lg-deck" d="M2 8 H42"/><path class="lg-rail" d="M2 3.8 H42 M2 12.2 H42"/></svg><span>what we have</span></div>
+    <div class="lg" id="lg-need"><svg width="44" height="16" viewBox="0 0 44 16"><path class="lg-need" d="M2 8 H42"/></svg><span>what we need</span></div>
+    <div class="lg" id="lg-own"><svg width="38" height="16" viewBox="0 0 38 16"><circle class="lg-ring" cx="8" cy="8" r="7"/><circle class="lg-dot" cx="8" cy="8" r="3.5"/><circle class="lg-ring" cx="30" cy="8" r="7"/></svg><span>an owner per stream · Ops, in progress</span></div>
+  </div>
+
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+$("#icon").src = T.icon;
+const DAY = T.name === "day";
+
+// ---- the camera S06 rests on: the city at 0.78, its Apps label still on x 96 (under the title), centred between
+// the headline and the footer band; x 1480-1824 is open sea for the stakes. S07 starts from here, dimmed
+// (s07.html copies CAM6, the gf re-cut and the owner-mark block below: change them together, or neither)
+const S6 = 0.78;
+const CAM6 = { x: +(96 * (1 - S6)).toFixed(2), y: 125, scale: S6 };
+window.S06_CAM = CAM6;
+const FULL = R.camera("full");
+
+// the map must cover every camera the scene rests on, padded 40 (SCENE_BRIEF §4): full and CAM6
+function seen(c) { return [-c.x / c.scale, -c.y / c.scale, (1920 - c.x) / c.scale, (1080 - c.y) / c.scale]; }
+const vf = seen(FULL), v6 = seen(CAM6);
+const RX0 = Math.floor(Math.min(vf[0], v6[0]) - 40), RY0 = Math.floor(Math.min(vf[1], v6[1]) - 40);
+const RX1 = Math.ceil(Math.max(vf[2], v6[2]) + 40), RY1 = Math.ceil(Math.max(vf[3], v6[3]) + 40);
+const RECT = { x: RX0, y: RY0, w: RX1 - RX0, h: RY1 - RY0 };
+
+function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const pt = (p) => p[0].toFixed(1) + "," + p[1].toFixed(1);
+const toS = (p) => [CAM6.x + S6 * p[0], CAM6.y + S6 * p[1]];          // world -> stage px at CAM6
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+const edgeD = (p, poly) => { let m = 1e9; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length];
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L));
+  m = Math.min(m, Math.hypot(a[0] + u * dx - p[0], a[1] + u * dy - p[1])); } return m; };
+
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { rect: RECT, state: "S04-end" });
+  const stageBox = () => $("#stage").getBoundingClientRect();
+  const kS = () => stageBox().width / 1920 || 1;
+  // a text line's baseline in stage px: a zero-size inline-block sits on it
+  function baseY(el) {
+    const m = document.createElement("span");
+    m.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+    el.appendChild(m);
+    const y = (m.getBoundingClientRect().top - stageBox().top) / kS();
+    m.remove();
+    return y;
+  }
+
+  // ---- measured with the labels placed for CAM6: the "?" ink, the label plates, the territories' baseline
+  h.place(CAM6);
+  const ink6 = h.q.__ink.map((s, i) => (s - (i % 2 ? CAM6.y : CAM6.x)) / S6);
+  const plates6 = [...h.labels.values()].map((el) => {
+    if (el === h.q) return h.q.__ink.slice();
+    const Lb = el.__L, w = el.offsetWidth, ht = el.offsetHeight;
+    const s = toS(Lb.at), x = s[0] - Lb.ax * w, y = s[1] - Lb.ay * ht;
+    return [x - 22, y - 12, x + w + 22, y + ht + 12];   // the plate (10 px past the text, 2 px) and its feather
+  });
+  const terrBase = baseY(h.labels.get("terr-AWS"));
+  h.place("full");
+
+  // ---- the gf crossing re-cut for the "?" as it sits at CAM6 (labels keep their screen size, so at 0.78 the
+  // glyph covers more of the river than the shared crossing, cut at camera full, leaves open).
+  // S07 starts from this exact state (s07.html copies this code): change both together, or neither
+  const GF = W.bridges.gf;
+  h.bridges.gf.remove();
+  const gf6 = R.neededGF(h.layers.needed, GF, ink6).g;
+
+  // ---- draw-on masks (alpha): the dashes appear along the link, from the island to the port
+  let defs = h.svg.querySelector(":scope > defs");
+  if (!defs) defs = h.svg.insertBefore(document.createElementNS(NS, "defs"), h.svg.firstChild);
+  function drawMask(g, pts, id) {
+    const m = mk("mask", { id, maskUnits: "userSpaceOnUse", x: RECT.x, y: RECT.y, width: RECT.w, height: RECT.h }, defs);
+    m.style.maskType = "alpha";
+    // butt caps (a round cap shows a dot at 0 %): the path runs 9 units past both ends to keep the links' own caps
+    const n = pts.length - 1, u0 = [pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]], u1 = [pts[n][0] - pts[n - 1][0], pts[n][1] - pts[n - 1][1]];
+    const L0 = Math.hypot(...u0) || 1, L1 = Math.hypot(...u1) || 1;
+    const p0 = [pts[0][0] + u0[0] / L0 * 9, pts[0][1] + u0[1] / L0 * 9], p1 = [pts[n][0] + u1[0] / L1 * 9, pts[n][1] + u1[1] / L1 * 9];
+    const p = mk("path", { d: "M" + [p0, ...pts, p1].map(pt).join(" L"), fill: "none", stroke: T.inUse, "stroke-width": 22, "stroke-linecap": "butt" }, m);
+    g.setAttribute("mask", `url(#${id})`);
+    return p;
+  }
+  const needed = W.bridges.needed;   // a = the island's end, b = the port's
+  const nb = (id) => needed.find((b) => b.id === id);
+  const mLand = drawMask(h.bridges.needed[needed.indexOf(nb("land"))], R.quad(nb("land").a, nb("land").c, nb("land").b, 40), "s06-m-land");
+  const mConn = drawMask(h.bridges.needed[needed.indexOf(nb("conn"))], R.quad(nb("conn").a, nb("conn").c, nb("conn").b, 40), "s06-m-conn");
+  const mGF = drawMask(gf6, [GF.a, GF.q, GF.b], "s06-m-gf");
+  const portAt = W.ports.find((p) => p.id === "missing").at;
+  // a spark at the drawing head of each link to the port (a short solid run of --in-use that travels with the
+  // mask and goes out at the port): the dashes read as being drawn, then rest
+  const sparkG = mk("g", { "data-s06": "sparks" }, h.layers.needed);
+  function spark(b) {
+    const d = "M" + R.quad(b.a, b.c, b.b, 40).map(pt).join(" L");
+    const halo = mk("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 8, "stroke-opacity": 0.22 * T.halo, "stroke-linecap": "round" }, sparkG);
+    const core = mk("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 3.4, "stroke-linecap": "round" }, sparkG);
+    return [halo, core];
+  }
+  const sparkOf = { land: spark(nb("land")), conn: spark(nb("conn")) };
+  // on day the dashes at 55 % fade into the paper at 720p (review): a step stronger, the dots of the owners too
+  if (DAY) {
+    for (const p of h.layers.needed.querySelectorAll("path[stroke-dasharray]")) p.setAttribute("stroke-opacity", "0.85");
+    for (const o of h.owners.values()) o.dot.setAttribute("fill", T.rgb(T.ink));
+  }
+
+  // ---- owner marks keep their camera-full size on screen at CAM6 (world units otherwise shrink them to 5 px).
+  // stage.js placed them clear of the label plates as they sit at camera full; at CAM6 the labels keep their screen
+  // size over a smaller city, so a mark that now touches a plate moves to the nearest parcel of its own district
+  // that is clear (illustrative positions; the count and the half filled are unchanged).
+  // S07 starts from this exact state (s07.html copies this block): change both together, or neither
+  const own = [...h.owners.values()];
+  const RING = 9;                                   // ring radius + stroke, screen px
+  const hitsPlate = (p) => { const s = toS(p); return plates6.some((b) => s[0] > b[0] - RING && s[0] < b[2] + RING && s[1] > b[1] - RING && s[1] < b[3] + RING); };
+  const ends = [...W.ports.map((p) => p.at), ...W.bridges.known.flatMap((b) => [b.a, b.b]), ...W.bridges.needed.flatMap((b) => [b.a, b.b]), W.bridges.gf.a, W.bridges.gf.b];
+  const moved = [];
+  for (const key of ["generators", "frontends"]) {
+    const I = W.apps[key];
+    I.streams.forEach((s, si) => {
+      const o = h.owners.get(s.id);
+      if (!o || !hitsPlate(o.at)) return;
+      const others = own.filter((q) => q !== o).map((q) => q.at);
+      const cand = I.parcels.filter((p) => p.s === si).map((p) => p.c)
+        .sort((a, b) => Math.hypot(a[0] - o.at[0], a[1] - o.at[1]) - Math.hypot(b[0] - o.at[0], b[1] - o.at[1]));
+      const clear = (p, edge, end, gap) => R.inside(p, s.poly) && edgeD(p, s.poly) >= edge && !hitsPlate(p)
+        && ends.every((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) >= end) && others.every((q) => Math.hypot(p[0] - q[0], p[1] - q[1]) >= gap);
+      // strictest first, as stage.js's markAt does; a district too tight for one tier falls to the next
+      const tiers = [[RING / S6, 36, 28], [6, 30, 20], [4, 0, 16], [0, 0, 0]];
+      let p = null;
+      for (const [edge, end, gap] of tiers) { p = cand.find((c) => clear(c, edge, end, gap)); if (p) break; }
+      if (!p) return;
+      for (const c of o.g.querySelectorAll("circle")) { c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); }
+      moved.push(s.id);
+      o.at = p;
+    });
+  }
+  window.S06_MOVED_OWNERS = moved;
+  for (const o of own) {
+    o.g.setAttribute("transform", `translate(${pt(o.at).replace(",", " ")}) scale(${(1 / S6).toFixed(4)}) translate(${(-o.at[0]).toFixed(1)} ${(-o.at[1]).toFixed(1)})`);
+  }
+  const rings = own.slice().sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1]);   // a sweep, west to east
+  const nOwned = Math.round(0.5 * h.ownerOrder.length);                                 // S06-end: half (stage.js)
+  const filled = h.ownerOrder.slice(0, nOwned).map((id) => h.owners.get(id).dot);
+
+  // ---- the stakes, beside what they are about (stage px at CAM6)
+  const st = { own: $("#st-own"), pii: $("#st-pii"), space: $("#st-space") };
+  const topOf = (el) => parseFloat(el.style.top) || 0;
+  const islandTop = CAM6.y + S6 * Math.min(...[W.apps.frontends.poly, W.apps.generators.poly, ...Object.values(W.islands).map((i) => i.poly)]
+    .map((poly) => poly.reduce((m, p) => Math.min(m, p[1]), 1e9)));
+  const capH = (() => { const cs = getComputedStyle(st.own.querySelector("h2")), c = document.createElement("canvas").getContext("2d");
+    c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return c.measureText("O").actualBoundingBoxAscent; })();
+  for (const el of Object.values(st)) el.style.top = "0px";
+  // Owners: the cap height of its title level with the islands' tops
+  st.own.style.top = Math.round(islandTop - (baseY(st.own.querySelector("h2")) - capH)) + "px";
+  // Space: its line's baseline on the territories' baseline (On-prem, GCP, AWS)
+  st.space.style.top = Math.round(terrBase - baseY(st.space.querySelector("p"))) + "px";
+  // PII data: midway
+  const ownBot = topOf(st.own) + st.own.offsetHeight, spTop = topOf(st.space);
+  st.pii.style.top = Math.round(ownBot + (spTop - ownBot - st.pii.offsetHeight) / 2) + "px";
+  const titleMid = (el) => topOf(el) + el.querySelector("h2").offsetHeight / 2;
+  const LX = 1462;   // where every leader meets its stake (the text starts at 1480)
+
+  // the anchors (world units), the highlights under the city's marks, the leaders over it (stage px)
+  const hl = h.svg.insertBefore(document.createElementNS(NS, "g"), h.svg.querySelector('[data-layer="owners"]'));
+  hl.setAttribute("data-s06", "stakes");
+  const lead = $("#lead");
+  function leader(from, to) {
+    const p = mk("path", { class: "ld", d: `M${pt(from)} L${pt(to)}` }, lead);
+    return p;
+  }
+  // Space -> the containers land: its coast, traced both ways from the point the leader lands on
+  const landS = W.land.poly.map(toS);
+  const ySp = titleMid(st.space);
+  const idx = landS.map((p, i) => [p, i]), level = idx.filter(([p]) => Math.abs(p[1] - ySp) < 16);
+  const iSp = (level.length ? level : idx).reduce((b, c) => (c[0][0] > b[0][0] ? c : b))[1];   // the east coast at the title
+  const aSp = landS[iSp];
+  const nL = W.land.poly.length, half = Math.floor(nL / 2);
+  const ring = Array.from({ length: nL + 1 }, (_, k) => W.land.poly[(iSp - half + k + nL) % nL]);   // the anchor in the middle
+  const coast = mk("path", { d: "M" + ring.map(pt).join(" L"), fill: "none", stroke: T.rgba(T.ink, 0.62), "stroke-width": (2.4 / S6).toFixed(2),
+    "stroke-linejoin": "round", "stroke-linecap": "round" }, hl);
+  const ldSp = leader([LX, ySp], [aSp[0] + 6, aSp[1]]);
+  const dSp = mk("circle", { class: "dt", cx: aSp[0] + 2, cy: aSp[1], r: 4.5 }, lead);
+  // PII data -> the old files: the land's north band (the "6+ months" half of every container), from its NE corner
+  const oldCells = W.land.containers.flatMap((c) => c.cells.filter((q) => q.part === "old"));
+  const yPi = titleMid(st.pii);
+  const cOf = (q) => R.centroid(q.poly);
+  const aPiW = oldCells.map(cOf).sort((a, b) => dist(toS(a), [LX, yPi]) - dist(toS(b), [LX, yPi]))[0];
+  const aPi = toS(aPiW);
+  const oldG = mk("g", { "data-s06": "old" }, hl);
+  const oldEls = oldCells.slice().sort((a, b) => dist(cOf(a), aPiW) - dist(cOf(b), aPiW)).map((q) =>
+    mk("path", { d: "M" + q.poly.map(pt).join(" L") + " Z", fill: T.rgba(T.ink, 0.16) }, oldG));
+  const ldPi = leader([LX, yPi], aPi);
+  const dPi = mk("circle", { class: "dt", cx: aPi[0], cy: aPi[1], r: 4.5 }, lead);
+  // Owners -> the owner marks: the leader stops at the nearest ring, and every ring pings outward from it
+  const yOw = titleMid(st.own);
+  const oOw = own.slice().sort((a, b) => dist(toS(a.at), [LX, yOw]) - dist(toS(b.at), [LX, yOw]))[0];
+  const aOw = toS(oOw.at), rS = 7.75 + 5;        // the ring keeps its camera-full size on screen: 7.75 px with its stroke
+  const dv = [aOw[0] - LX, aOw[1] - yOw], dl = Math.hypot(...dv);
+  const ldOw = leader([LX, yOw], [aOw[0] - dv[0] / dl * rS, aOw[1] - dv[1] / dl * rS]);
+  const pings = own.slice().sort((a, b) => dist(a.at, oOw.at) - dist(b.at, oOw.at)).map((o) =>
+    mk("circle", { cx: o.at[0], cy: o.at[1], r: 10, fill: "none", stroke: T.rgba(T.ink, 0.8), "stroke-width": (1.8 / S6).toFixed(2) }, hl));
+
+  // ---- s0: S04's end at camera full (set by mount); the scene's own pieces hidden
+  const texts = (el) => [el.querySelector("h2"), el.querySelector("p")];
+  const allTexts = Object.values(st).flatMap(texts);
+  gsap.set(own.map((o) => o.g), { autoAlpha: 0 });
+  gsap.set([h.ports.missing, ...h.bridges.needed, gf6], { autoAlpha: 0 });
+  gsap.set([mLand, mConn, mGF], { drawSVG: "0%" });
+  gsap.set([...sparkOf.land, ...sparkOf.conn], { autoAlpha: 0, drawSVG: "0% 0%" });
+  gsap.set(["#lg-have", "#lg-need", "#lg-own"], { autoAlpha: 0 });
+  gsap.set(allTexts, { autoAlpha: 0, y: 14 });
+  gsap.set([ldSp, ldPi, ldOw], { drawSVG: "0%" });
+  gsap.set([dSp, dPi], { autoAlpha: 0, scale: 0, transformOrigin: "50% 50%" });
+  gsap.set(coast, { drawSVG: "50% 50%", autoAlpha: 0 });
+  gsap.set([...oldEls, ...pings], { autoAlpha: 0 });
+
+  const tl = gsap.timeline({ paused: true });
+  function runSpark(paths, at, dur) {   // the head follows the mask's ease; the tail trails 28 % of the link's time
+    const pr = { p: 0 }, ease = gsap.parseEase(R.MOTION.beam);
+    const draw = () => { const e = ease(Math.min(1, pr.p)), b = Math.min(1, e) * 100, a = ease(Math.max(0, pr.p - 0.28)) * 100;
+      gsap.set(paths, { drawSVG: `${Math.min(a, b).toFixed(2)}% ${b.toFixed(2)}%` }); };
+    tl.set(paths, { autoAlpha: 1 }, at);
+    tl.fromTo(pr, { p: 0 }, { p: 1.28, duration: dur * 1.28, ease: "none", onUpdate: draw }, at);
+    tl.to(paths, { autoAlpha: 0, duration: 0.35, ease: R.MOTION.light }, at + dur * 1.28 - 0.3);
+  }
+  tl.addLabel("s0", 0);
+  // 1 · the city shrinks to the left (labels follow: h.sync re-anchors them every frame)
+  tl.to(h.world, Object.assign({ duration: 1.8, ease: R.MOTION.dolly, onUpdate: h.sync }, CAM6), "s0+=0.2");
+  tl.to("#lg-have", { autoAlpha: 1, duration: 0.6, ease: R.MOTION.rise }, "s0+=1.2");
+  // 2 · the needed links: the second port, then the land's and Data connections' links to it
+  tl.set(h.layers.needed, { autoAlpha: 1 }, "s0+=1.9");
+  tl.fromTo(h.ports.missing, { autoAlpha: 0, scale: 0.4, svgOrigin: `${portAt[0]} ${portAt[1]}` },
+    { autoAlpha: 1, scale: 1, svgOrigin: `${portAt[0]} ${portAt[1]}`, duration: 0.6, ease: R.MOTION.kindle }, "s0+=1.9");
+  tl.set(h.bridges.needed, { autoAlpha: 1 }, "s0+=2.15");
+  tl.to(mConn, { drawSVG: "100%", duration: 0.95, ease: R.MOTION.beam }, "s0+=2.15");
+  runSpark(sparkOf.conn, 2.15, 0.95);
+  tl.to(mLand, { drawSVG: "100%", duration: 0.95, ease: R.MOTION.beam }, "s0+=2.45");
+  runSpark(sparkOf.land, 2.45, 0.95);
+  tl.to("#lg-need", { autoAlpha: 1, duration: 0.6, ease: R.MOTION.rise }, "s0+=2.7");
+  // 3 · Generators -> Front ends, across the "?"
+  tl.set(gf6, { autoAlpha: 1 }, "s0+=3.8");
+  tl.to(mGF, { drawSVG: "100%", duration: 0.8, ease: R.MOTION.beam }, "s0+=3.8");
+  // 4 · an owner ring on every stream district (a sweep), then half of them filled: Ops, in progress
+  tl.set(h.layers.owners, { autoAlpha: 1 }, "s0+=4.9");
+  tl.fromTo(rings.map((o) => o.g.firstChild), { attr: { r: 3 } }, { attr: { r: 7 }, duration: 0.6, ease: R.MOTION.kindle, stagger: 1.2 / rings.length }, "s0+=4.9");
+  tl.to(rings.map((o) => o.g), { autoAlpha: 1, duration: 0.45, ease: R.MOTION.light, stagger: 1.2 / rings.length }, "s0+=4.9");
+  tl.fromTo(filled, { autoAlpha: 0, attr: { r: 0 } }, { autoAlpha: 1, attr: { r: 3.5 }, duration: 0.45, ease: "back.out(2)", stagger: 1.5 / filled.length }, "s0+=5.9");
+  tl.to("#lg-own", { autoAlpha: 1, duration: 0.6, ease: R.MOTION.rise }, "s0+=6.1");
+  // 5 · why it matters: each stake rises beside its place, its leader draws into the map, and the place answers
+  const STK = [
+    { el: st.space, ld: ldSp, dot: dSp, at: 7.6, mark: (t) => {
+      tl.set(coast, { autoAlpha: 1 }, t);
+      tl.to(coast, { drawSVG: "0% 100%", duration: 1.1, ease: R.MOTION.beam }, t);
+      tl.to(coast, { autoAlpha: 0.6, duration: 0.8, ease: R.MOTION.light }, t + 1.1);         // rests as a quiet rim
+    } },
+    { el: st.pii, ld: ldPi, dot: dPi, at: 8.6, mark: (t) => {
+      // a ripple from the leader's point over the old halves, then they settle to a faint tint
+      tl.to(oldEls, { autoAlpha: 1, duration: 0.35, ease: R.MOTION.light, stagger: 0.8 / oldEls.length }, t);
+      tl.to(oldG, { autoAlpha: 0.45, duration: 0.8, ease: R.MOTION.light }, t + 1.0);
+    } },
+    { el: st.own, ld: ldOw, dot: null, at: 9.6, mark: (t) => {
+      tl.fromTo(pings, { autoAlpha: 0.9, attr: { r: 10 } }, { autoAlpha: 0, attr: { r: 24 }, duration: 0.7, ease: "power2.out", stagger: 0.6 / pings.length, immediateRender: false }, t);
+    } },
+  ];
+  for (const k of STK) {
+    tl.to(texts(k.el), { autoAlpha: 1, y: 0, duration: 0.7, ease: R.MOTION.rise, stagger: 0.12 }, `s0+=${k.at}`);
+    tl.to(k.ld, { drawSVG: "100%", duration: 0.45, ease: R.MOTION.beam }, `s0+=${k.at + 0.2}`);
+    if (k.dot) tl.to(k.dot, { autoAlpha: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, `s0+=${k.at + 0.58}`);
+    k.mark(k.at + 0.62);
+  }
+  tl.addLabel("s1", "+=0.1");
+
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1"]);
+})();
+</script>
+</body>
+</html>

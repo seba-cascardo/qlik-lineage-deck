@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S00 · World scene skeleton</title>
+<!--
+  A minimal world scene (S04-like), the skeleton of deck/shared/world/SCENE_BRIEF.md. Paths are relative to
+  deck/scenes/: copy this file there as sNN.html and build on it. Checked with qa/capture.py (the brief says how).
+    s0  the city at night, its lights off (the known islands unlit, nothing labelled)
+    s1  the known islands light up with their quiet bridges and the common port (R.MOTION.light)
+    s2  the names rise, then the "?" in the river: S04's end state, = WorldStage "S04-end"
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }                         /* WorldStage mounts the world here */
+  .scene-title { left: 96px; top: 56px; line-height: 70px; color: var(--ink); }   /* headline block from y 56 */
+  #note { position: absolute; right: 184px; top: 1012px; }      /* footnote band, clear of the icon */
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">We weren't short of data</h1>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME;
+document.querySelector("#icon").src = T.icon;
+
+(async () => {
+  // the map is drawn once and frozen inside mount(); split: an unlit map under the lit one (S04's lights)
+  const h = await WorldStage.mount(document.querySelector("#ws"), { split: true, state: "S04-end" });
+  const names = [...h.labels.values()].filter((el) => el !== h.q);
+
+  // s0: the state before the first click (set, then every step tweens away from it)
+  // a label's place is its own transform (R.placeLabels): fade labels (autoAlpha), never tween their x / y / scale
+  gsap.set([h.layers.lit, h.layers.known, h.q, ...names], { autoAlpha: 0 });
+
+  // a label is where the scene RESTS; a click plays from one label to the next
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  tl.to(h.layers.lit, { autoAlpha: 1, duration: 0.8, ease: R.MOTION.light }, "s0");
+  tl.to(h.layers.known, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s0+=0.4");
+  tl.addLabel("s1");
+  tl.to(names, { autoAlpha: 1, duration: 0.7, ease: R.MOTION.rise, stagger: 0.03 }, "s1");
+  tl.to(h.q, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.kindle }, ">-0.2");
+  tl.addLabel("s2");
+  // the icon is decoded before the scene says it is ready (thumbnails, the player's first frame)
+  await document.querySelector("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2"]);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S01 · Title</title>
+<!--
+  S01 Title (storyboard v4 S01), rebuilt on the night stage (Seba 2026-10-21: the paper intro looked cheap next to
+  the night map; the paper version is in qa/out/backup_intro/s01.paper.html). Same film as S04-S19, same assets:
+    - the announced title, the subtitle and the speaker line, in the headline position of every scene (ink from
+      y 54, x 96), in --ink on the stage;
+    - the ground: an island of the map's own grammar (deck/shared/world/world.js): the detached terrain's fill and
+      2 px coast (THEME.dark), the sea's contour hairlines round it (R.contours, with the icon's air) and the
+      estate's pool of light (R.glow, THEME.glow). Its texture is the reload logs (foundation/reload-log-*.txt;
+      the generator's diary at 06:00, then the front end's at 07:02), 20 px rows, dark;
+    - the four mentions the graph grows from (SALES_DB, sales_orders.qvd written by one app and read by another,
+      calendar.qvd) are lit in --in-use with the city's field glow (R.bloomCells); from each a root of light
+      (R.lightBridge: a link found in the logs) leaves the row's end, crosses the coast and rises to its node;
+    - the small graph above the coast in the city's light: bridges of light between nodes, nodes kindled with the
+      renderer's light sprites and bloom (R.lights, R.bloom): the source, the files (in use, --in-use) and the two
+      apps and their people (THEME.app's white light). The two mentions of sales_orders.qvd meet in one ringed
+      node. No labels: "from the ground up" starts to make sense without being explained.
+  Routing: a root leaves its row after the row's last word and turns up right of every row above it; a deeper
+  row turns up further right, so no root crosses a word or another root.
+  Static: one label (s0), start = end (contract: cut to S02). Red only in the icon (none: white icon on night).
+  Colours only from THEME / theme.js's CSS variables (qa/lint_colors.py). Canvases drawn once at res 2 (sharp up
+  to the 3840 px window) and frozen (R.freeze) before Scene.init. No Math.random (R.mulberry32). Rows that carry
+  counts (lines fetched, fields found, process id) are left out: no number on screen claims anything truth.json
+  does not hold.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene {
+    background: var(--stage); color: var(--ink);
+    --surface: 578px;                                         /* the ground's coast, on average */
+    --log-ts: color-mix(in srgb, var(--ink-faint) 30%, transparent);
+    --log-st: color-mix(in srgb, var(--ink-dim) 34%, transparent);
+    --log-key: color-mix(in srgb, var(--ink-dim) 60%, transparent);
+  }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ground, #lights { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+
+  /* ------------------------------------------------------------ the title block */
+  /* the headline of every scene: ink from y 54, x 96 (-3: the Q's side bearing; -3 the B's, -1 the S's: measured) */
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -3px; color: var(--ink); white-space: nowrap; }
+  .sub { position: absolute; left: 96px; top: 121px; margin: 0 0 0 -3px; font-size: 44px; line-height: 52px; font-weight: 300;
+    color: var(--ink); white-space: nowrap; }
+  .by { position: absolute; left: 96px; top: 207px; margin: 0 0 0 -1px; font-size: 28px; line-height: 36px; font-weight: 400;
+    color: var(--ink-dim); white-space: nowrap; }
+  .by b { font-weight: 500; color: var(--ink); }
+  .by i { font-style: normal; color: var(--ink-faint); padding: 0 10px; }
+
+  /* ------------------------------------------------------------ the ground's texture: the reload logs */
+  .strata {
+    position: absolute; left: 96px; top: calc(var(--surface) + 36px);
+    /* the ground goes on below the frame: the deepest rows fade into it */
+    -webkit-mask-image: linear-gradient(to bottom, var(--ink) 0, var(--ink) 380px, transparent 486px);
+            mask-image: linear-gradient(to bottom, var(--ink) 0, var(--ink) 380px, transparent 486px);
+  }
+  .stratum + .stratum { margin-top: 18px; }
+  .row {
+    display: grid; grid-template-columns: 262px 60px auto; justify-content: start;
+    font-size: 20px; line-height: 26px; height: 26px; white-space: nowrap;
+    color: var(--log-ts); font-variant-numeric: tabular-nums;
+  }
+  .row .st { color: var(--log-st); }
+  .row .st b { font-weight: 700; }
+  .row.key .st { color: var(--log-key); }
+  .row.key > span:first-child, .row.key > span:nth-child(2) { color: var(--log-st); }
+  mark { background: none; color: var(--in-use); font-weight: 500; padding: 0; margin: 0; }
+
+  /* ------------------------------------------------------------ the graph: bridges under the lights, cores over */
+  svg.graph { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <canvas id="ground"></canvas>
+
+  <div class="strata" aria-hidden="true">
+    <!-- the generator's diary, 06:00 -->
+    <div class="stratum">
+      <div class="row"><span>20261012T060000.040+0200</span><span>0021</span><span class="st">// ---- Extract: sales orders ----</span></div>
+      <div class="row key" data-k="db"><span>20261012T060000.041+0200</span><span>0022</span><span class="st"><b>LIB CONNECT TO</b> '<mark>SALES_DB</mark>'</span></div>
+      <div class="row"><span>20261012T060000.420+0200</span><span>0024</span><span class="st"><b>SQL SELECT</b> * <b>FROM</b> dbo.SalesOrders</span></div>
+      <div class="row key" data-k="so-gen"><span>20261012T060012.310+0200</span><span>0026</span><span class="st"><b>STORE</b> SalesOrders <b>INTO</b> [lib://SalesContainer/QVD/<mark>sales_orders.qvd</mark>] (qvd)</span></div>
+      <div class="row"><span>20261012T060013.103+0200</span><span>0033</span><span class="st"><b>SQL SELECT</b> CustomerID, Segment, Region <b>FROM</b> dbo.Customers</span></div>
+      <div class="row"><span>20261012T060014.990+0200</span><span>0035</span><span class="st"><b>STORE</b> Customers <b>INTO</b> [lib://SalesContainer/QVD/customers.qvd] (qvd)</span></div>
+      <div class="row"><span>20261012T060015.402+0200</span><span></span><span class="st">Execution finished.</span></div>
+    </div>
+    <!-- the front end's diary, 07:02 -->
+    <div class="stratum">
+      <div class="row"><span>20261012T070200.035+0200</span><span>0018</span><span class="st">// ---- Data model ----</span></div>
+      <div class="row"><span>20261012T070200.036+0200</span><span>0019</span><span class="st">Sales:</span></div>
+      <div class="row key" data-k="so-fe"><span>20261012T070200.037+0200</span><span>0020</span><span class="st"><b>LOAD</b> * <b>FROM</b> [lib://SalesContainer/QVD/<mark>sales_orders.qvd</mark>] (qvd)</span></div>
+      <div class="row"><span>20261012T070201.420+0200</span><span>0023</span><span class="st">Customers:</span></div>
+      <div class="row"><span>20261012T070201.421+0200</span><span>0024</span><span class="st"><b>LOAD</b> * <b>FROM</b> [lib://SalesContainer/QVD/customers.qvd] (qvd)</span></div>
+      <div class="row"><span>20261012T070201.540+0200</span><span>0027</span><span class="st">Calendar:</span></div>
+      <div class="row key" data-k="ca-fe"><span>20261012T070201.541+0200</span><span>0028</span><span class="st"><b>LOAD</b> * <b>FROM</b> [lib://MasterContainer/QVD/<mark>calendar.qvd</mark>] (qvd)</span></div>
+      <div class="row"><span>20261012T070201.610+0200</span><span></span><span class="st">Creating search index</span></div>
+      <div class="row"><span>20261012T070202.204+0200</span><span></span><span class="st">Search index creation completed successfully</span></div>
+      <div class="row"><span>20261012T070202.215+0200</span><span></span><span class="st">App saved</span></div>
+      <div class="row"><span>20261012T070202.216+0200</span><span></span><span class="st">Execution finished.</span></div>
+    </div>
+  </div>
+
+  <svg class="graph" id="bridges" aria-hidden="true"></svg>
+  <canvas id="lights"></canvas>
+  <svg class="graph" id="cores" aria-hidden="true"></svg>
+
+  <h1 class="scene-title" id="title">Qlik Estate Rationalisation</h1>
+  <p class="sub">Building Qlik Lineage from the Ground Up</p>
+  <p class="by"><b>Sebastián Cascardo Andrés</b><i>•</i>Qlik Specialist Technical Lead<i>•</i>AIDA</p>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME;
+const $ = (s) => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+const icon = $("#icon");
+icon.src = T.icon;                       // white on night, red on day
+
+(async () => {
+  // measure the log rows with the real font, then grow the graph from them
+  await Promise.all(["300 44px Vodafone", "400 20px Vodafone", "500 20px Vodafone", "700 20px Vodafone",
+    "700 64px Vodafone", "400 28px Vodafone", "500 28px Vodafone"].map((f) => document.fonts.load(f)));
+
+  const RES = 2, RECT = { x: 0, y: 0, w: 1920, h: 1080 };
+  const SURF = parseFloat(getComputedStyle(document.body).getPropertyValue("--surface"));
+  // stage coordinates of an element (immune to any transform the page or a host puts on the body)
+  const B = document.body.getBoundingClientRect(), k1920 = B.width / 1920 || 1;
+  const box = (e) => { const r = e.getBoundingClientRect();
+    return { left: (r.left - B.left) / k1920, right: (r.right - B.left) / k1920, top: (r.top - B.top) / k1920,
+      bottom: (r.bottom - B.top) / k1920, height: r.height / k1920 }; };
+
+  // ---------------------------------------------------------------- the ground: an island of the map's grammar
+  // Its coast: a straight top and a rounded right end, pushed along the normal by seeded value noise (three
+  // octaves), so it reads as one of the city's coasts; it runs off the frame left and bottom.
+  function noise(seed, step) {
+    const r = R.mulberry32(seed), v = Array.from({ length: 256 }, () => r() * 2 - 1);
+    return (s) => { const u = s / step + 16, i = Math.floor(u), f = u - i, e = f * f * (3 - 2 * f);
+      return v[((i % 256) + 256) % 256] * (1 - e) + v[(((i + 1) % 256) + 256) % 256] * e; };
+  }
+  const n0 = noise(10, 420), n1 = noise(11, 150), n2 = noise(12, 48), n3 = noise(13, 17);
+  const wob = (s) => 16 * n0(s) + 9 * n1(s) + 3.5 * n2(s) + 1.4 * n3(s);
+  const XR = 1680, RAD = 170, BOT = 1220, X0 = -140;
+  const base = [];                                         // [x, y, nx, ny, s]: the coast before the noise
+  let s = 0;
+  for (let x = X0; x <= XR - RAD; x += 4) { base.push([x, SURF, 0, -1, s]); s += 4; }
+  const arcN = Math.ceil((Math.PI / 2) * RAD / 4);
+  for (let i = 1; i <= arcN; i++) {
+    const a = -Math.PI / 2 + (i / arcN) * (Math.PI / 2), cx = XR - RAD, cy = SURF + RAD;
+    base.push([cx + RAD * Math.cos(a), cy + RAD * Math.sin(a), Math.cos(a), Math.sin(a), s]); s += (Math.PI / 2) * RAD / arcN;
+  }
+  for (let y = SURF + RAD + 4; y <= BOT; y += 4) { base.push([XR, y, 1, 0, s]); s += 4; }
+  const coast = base.map(([x, y, nx, ny, t]) => { const d = wob(t); return [x + nx * d, y + ny * d]; });
+  const groundPoly = coast.concat([[coast[coast.length - 1][0], BOT + 40], [X0, BOT + 40]]);
+
+  // Baked: the two canvases of this still scene are pre-rendered PNGs (s01_bake/, made by
+  // qa/bake_s01.py from this very code with ?nobake), so the title opens at once even on a slow laptop
+  // (drawing them took ~21 s at 4x CPU throttle). ?nobake draws them live, as before.
+  const BAKED = (T.name === "night" || T.name === "day") && !new URLSearchParams(location.search).has("nobake");
+  const gcv = $("#ground");
+  gcv.width = RECT.w * RES; gcv.height = RECT.h * RES;
+  gcv.style.cssText = "position:absolute;left:0;top:0;width:1920px;height:1080px;display:block";   // R.freeze keeps it
+  const xf = (p) => [(p[0] - RECT.x) * RES, (p[1] - RECT.y) * RES];
+  const marks = [...document.querySelectorAll(".strata mark")].map(box);
+  if (!BAKED) {
+  const g = gcv.getContext("2d", { alpha: false });
+  // sea, the estate's pool of light (as R.map draws it), centred on the graph
+  g.fillStyle = T.sea; g.fillRect(0, 0, gcv.width, gcv.height);
+  {
+    const kk = 0.25, gw = Math.ceil(RECT.w * RES * kk), gh = Math.ceil(RECT.h * RES * kk);
+    const gl = R.glow(gw, gh, 1120 * RES * kk, 470 * RES * kk, 1100 * RES * kk, 620 * RES * kk, T.glow.rgb, T.glow.alpha, 21);
+    g.imageSmoothingQuality = "high"; g.drawImage(gl, 0, 0, gcv.width, gcv.height);
+  }
+  // the sea's contour hairlines round the ground (R.contours keeps the icon's air)
+  R.contours(g, [groundPoly], xf, RES);
+  // the ground: the detached terrain as R.map draws the container land (THEME.dark: its field colour, its fine
+  // grain, its 2 px coast), dark until something is found in it
+  {
+    const D = T.dark, G = D.ground, g0 = G.base + 0.5 * G.span * T.texture.shade;
+    const P = groundPoly.map(xf), A = R.area(P), grain = 2.0 * RES;
+    R.cellFiles(g, { poly: groundPoly, files: Math.round(A / (grain * grain)) }, 0, xf, RES, {
+      ground: T.rgb(G.tint.map((t) => Math.round(g0 + t))), rgb: D.mark, lum: 0.085, add: false,
+      minTile: 3.4 * RES, minGrain: grain, gap: 0.8 * RES, gapK: 0.32, dotK: 0.5, cover: 0.7, jx: 0.5, jy: 0.08 }, 901);
+  }
+  R.path(g, groundPoly, xf); g.lineJoin = "round"; g.lineWidth = R.HAIR * RES; g.strokeStyle = T.known.rim; g.stroke();
+
+  // ---------------------------------------------------------------- the four mentions, lit in the ground
+  const markPolys = marks.map((m) => [[m.left - 2, m.top + 3], [m.right + 2, m.top + 3], [m.right + 2, m.bottom - 3], [m.left - 2, m.bottom - 3]]);
+  R.bloomCells(g, markPolys, T.inUse, 0.9, 9, RECT, RES, 5);
+  }
+
+  // ---------------------------------------------------------------- the graph (stage px)
+  // A lineage growing upwards, each level above the one that feeds it: the source just above the coast, its
+  // generator, the files (the two it writes, and a third from elsewhere), the front end that reads them, and at
+  // the top, widest, the people who open it. It leans from the middle of the frame up to the right, in the band
+  // between the title block and the coast; nodes left of x 900 stay below the speaker line (y 243).
+  const N = {
+    db:  { x: 760,  y: 500, kind: "use" },
+    gen: { x: 930,  y: 414, kind: "app" },
+    cu:  { x: 1004, y: 312, kind: "use" },
+    so:  { x: 1164, y: 334, kind: "use", ring: true },
+    ca:  { x: 1480, y: 340, kind: "use" },
+    fe:  { x: 1252, y: 222, kind: "app" },
+    u1:  { x: 1052, y: 150, kind: "person" },
+    u2:  { x: 1182, y: 106, kind: "person" },
+    u3:  { x: 1336, y: 100, kind: "person" },
+    u4:  { x: 1490, y: 136, kind: "person" },
+  };
+  const edges = [["db", "gen"], ["gen", "so"], ["gen", "cu"], ["so", "fe"], ["cu", "fe"], ["ca", "fe"],
+    ["fe", "u1"], ["fe", "u2"], ["fe", "u3"], ["fe", "u4"]];
+  // each mention grows a root: [row, node, x where it turns up]. Deeper rows turn up further right (no crossing);
+  // the two mentions of sales_orders.qvd turn up either side of their node and meet in it.
+  const roots = [["db", "db", 760], ["so-gen", "so", 1136], ["so-fe", "so", 1192], ["ca-fe", "ca", 1480]];
+
+  const gB = $("#bridges"), gC = $("#cores");
+  const P = (n) => [N[n].x, N[n].y];
+  // a root: out of its row to the right, then up to the node (a quadratic whose control is the turn)
+  const rootStarts = [];
+  for (const [rk, n, xv] of roots) {
+    const row = document.querySelector(`.row[data-k="${rk}"]`);
+    const st = box(row.querySelector(".st")), rr = box(row);
+    const a = [Math.round(st.right + 16), Math.round(rr.top + rr.height / 2)];
+    rootStarts.push(a);
+    R.lightBridge(gB, { id: "root-" + rk, a, c: [xv, a[1]], b: P(n) }, { core: 2.6 });
+  }
+  // an edge: a gentle arc bowed upwards (it leaves the lower node climbing), as the city's bridges arc
+  for (const [p, q] of edges) {
+    const a = P(p), b = P(q), dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+    let nx = dy / L, ny = -dx / L;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    const bend = 0.13 * L, c = [(a[0] + b[0]) / 2 + nx * bend, (a[1] + b[1]) / 2 + ny * bend];
+    R.lightBridge(gB, { id: `${p}-${q}`, a, c, b }, { core: N[q].kind === "person" ? 2.2 : 3 });
+  }
+
+  // ---------------------------------------------------------------- the nodes kindled: the renderer's light
+  const lcv = $("#lights");
+  lcv.width = RECT.w * RES; lcv.height = RECT.h * RES;
+  lcv.style.cssText = gcv.style.cssText;
+  const of = (kind) => Object.values(N).filter((n) => n.kind === kind).map((n) => [n.x, n.y]);
+  if (!BAKED) {
+  const l = lcv.getContext("2d");
+  R.bloom(l, of("use").concat(rootStarts), T.inUse, 0.7, 30, RECT, RES, 3);
+  R.bloom(l, of("app"), T.app, 0.32, 30, RECT, RES, 4);
+  R.bloom(l, of("person"), T.app, 0.16, 20, RECT, RES, 6);
+  l.setTransform(RES, 0, 0, RES, -RECT.x * RES, -RECT.y * RES);
+  R.lights(l, of("use"), T.inUse, 0.95, 30);
+  R.lights(l, of("app"), T.app, 0.9, 32);
+  R.lights(l, of("person"), T.app, 0.75, 18);
+  R.lights(l, rootStarts, T.inUse, 0.8, 14);
+  l.setTransform(1, 0, 0, 1, 0, 0);
+  }
+
+  // crisp cores over the light (vector, sharp at any scale): the colour of the node, the white core of a bridge
+  for (const n of Object.values(N)) {
+    if (n.ring) svgEl("circle", { cx: n.x, cy: n.y, r: 19, fill: "none", stroke: T.inUse, "stroke-width": 2, "stroke-opacity": 0.6 }, gC);
+    const r = n.kind === "app" ? 9 : n.kind === "use" ? 7.5 : 5;
+    svgEl("circle", { cx: n.x, cy: n.y, r, fill: n.kind === "use" ? T.inUse : T.rgba(T.app, 0.95) }, gC);
+    if (n.kind === "use") svgEl("circle", { cx: n.x, cy: n.y, r: 3, fill: T.rgba(T.app, 0.9) }, gC);
+    if (n.kind === "app") svgEl("circle", { cx: n.x, cy: n.y, r: 13, fill: "none", stroke: T.rgba(T.app, 0.5), "stroke-width": 2 }, gC);
+  }
+  for (const a of rootStarts) svgEl("circle", { cx: a[0], cy: a[1], r: 3.5, fill: T.inUse }, gC);
+
+  if (BAKED) {
+    await Promise.all([[gcv, "ground"], [lcv, "lights"]].map(([c, name]) => {
+      const img = new Image();
+      img.id = c.id; img.className = c.className; img.style.cssText = c.style.cssText;
+      img.decoding = "sync"; img.draggable = false;
+      img.src = `s01_bake/${name}_${T.name}.png`;
+      return img.decode().then(() => c.replaceWith(img));
+    }));
+  } else {
+    await R.freeze([gcv, lcv]);
+  }
+  await icon.decode().catch(() => {});
+  const tl = gsap.timeline({ paused: true }).addLabel("s0");
+  Scene.init(tl, ["s0"]);
+})();
+</script>
+</body>
+</html>

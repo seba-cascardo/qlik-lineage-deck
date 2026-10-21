@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S14 · Measured as products</title>
+<!--
+  S14 (Task 10 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S14, "Chart antes/despues, pieza central").
+  The reload cost of two products as light columns standing on their own parcels of the dimmed Apps pair.
+  No number on screen: the heights are illustrative (labelled "Illustrative reload cost"); which parcels stand
+  for the apps is illustrative too (fixed ids, chosen on one baseline), the map's counts are real.
+    s0  S13's end: camera apps, the city in "S09-end" under the dim veil (owners hidden at zoom > 1), only the
+        Generators and Front ends names; the headline and "Illustrative reload cost, measured per app"
+        (a dithered band of the stage colour clears the footer and the icon corner: the land lies under both here)
+    s1  S09's bridges recede (the product's own links come next);
+        per app: an app that reads a database directly rises as the tallest column ("looks the heaviest");
+        a front end that reads QVDs barely leaves its parcel ("looks almost free"); a dashed line at the
+        tallest column's height runs back across the map
+    s2  its generators, in another stream: the two stream districts outlined, two dashed columns on the
+        Generators island, "not counted"
+    s3  measured per product: the product links light up across the river (bridges of light, as S09 found
+        them), each generator's cost drains down its column and a packet of light carries it over the bridge onto
+        the front end; the stack outgrows the dashed line: "Product B" now outweighs "Product A". The labels are
+        renamed in place (cross-fades), and B's rides the top of its stack (.grp), so no column is ever unnamed
+    s4  "We weren't measuring products. / We were measuring pieces of them."
+  End = camera apps with the chart (the contract's S14 end), so S15 (apps) starts on the same ground.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -3px; color: var(--ink); }   /* the headlines' line box; ink from y 55 here (no l or i: M and d start 1 px lower), x 96 (-3: the M's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .txt { position: absolute; font-family: "Vodafone", system-ui, sans-serif; white-space: nowrap;
+    -webkit-font-smoothing: antialiased; }
+  /* the chart's caption under the headline: the measure swaps from "per app" to "per product" */
+  #sub { left: 96px; top: 138px; font-size: 30px; line-height: 38px; font-weight: 400; color: var(--ink-dim); }
+  #sub .m { position: absolute; left: 100%; top: 0; padding-left: 0.22em; color: var(--ink); font-weight: 700; }
+  /* the closing sentence, in the open sea right of the headline (camera apps: the islands start at y 283) */
+  #close { right: 96px; top: 60px; text-align: right; font-size: 40px; line-height: 50px; font-weight: 500; color: var(--ink); }
+  #close .l1 { display: block; color: var(--ink-dim); font-weight: 400; }
+  #close .l2 { display: block; }
+
+  /* ---- the light columns (screen space; the camera rests at apps the whole scene) */
+  #cols { position: absolute; inset: 0; pointer-events: none; }
+  .seg { position: absolute; width: 64px; height: 0; box-sizing: border-box; border-radius: 3px 3px 0 0; }
+  .seg.ghost { width: 56px; }        /* the two generators stand 69 px apart: a little narrower, so they keep a seam */
+  .seg.app { --c: var(--ink); }
+  .seg.use { --c: var(--in-use); }
+  .seg.app, .seg.use {
+    /* a column of light, not a bar: a glass body the map shows through, bright at its foot, a crisp cap */
+    background: linear-gradient(to top, color-mix(in srgb, var(--c) 88%, transparent), color-mix(in srgb, var(--c) 50%, transparent) 18%,
+      color-mix(in srgb, var(--c) 26%, transparent));
+    border-top: 3px solid var(--c);
+  }
+  /* the cap's own glow, and (on the column's first segment) a pool of light at its foot; --cap / --foot are set
+     from THEME in JS (alpha x THEME.halo) */
+  .seg.app::before, .seg.use::before { content: ""; position: absolute; left: -4px; right: -4px; top: -5px; height: 5px;
+    border-radius: 3px; background: var(--c); box-shadow: 0 0 16px 4px var(--cap); pointer-events: none; }
+  .seg.base::after { content: ""; position: absolute; left: -44px; right: -44px; bottom: -18px; height: 36px;
+    border-radius: 50%; background: radial-gradient(closest-side, var(--foot), transparent); pointer-events: none; }
+  /* B's column, its stack and its label move as one: the label rides the top of the stack (a flex column, bottom up) */
+  .grp { position: absolute; display: flex; flex-direction: column-reverse; align-items: center; pointer-events: none; }
+  .grp > .seg { position: relative; flex: none; }
+  .grp > .seg + .seg { margin-bottom: 3px; }   /* the dark seam between stacked segments (GAP) */
+  .grp > .lead { flex: 1 0 10px; width: 2px; margin: 4px 0; background: color-mix(in srgb, var(--ink-faint) 85%, transparent); }
+  .grp > .slot { flex: none; display: grid; }
+  .slot > .tag { grid-area: 1 / 1; position: relative; left: auto; top: auto; justify-self: center; }
+  /* a generator measured per app: its cost is there but counted nowhere (dashed, faint) */
+  .seg.ghost { border: 2px dashed color-mix(in srgb, var(--ink-faint) 90%, transparent); border-bottom: none; }
+  .seg.ghost .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
+    background: linear-gradient(to top, color-mix(in srgb, var(--ink-faint) 34%, transparent), color-mix(in srgb, var(--ink-faint) 14%, transparent)); }
+  #ref { position: absolute; height: 0; border-top: 2px dashed color-mix(in srgb, var(--ink-faint) 75%, transparent); }
+
+  /* ---- the column labels: .w-label (plate at night, halo by day), two lines, centred on their column */
+  #tags { position: absolute; inset: 0; pointer-events: none; }
+  .tag { position: absolute; left: 0; top: 0; text-align: center; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">Measured as products</h1>
+  <div id="sub" class="txt"><span id="sub-base">Illustrative reload cost, measured</span><span class="m" id="m-app">per app</span><span class="m" id="m-prod">per product</span></div>
+  <div id="close" class="txt"><span class="l1">We weren't measuring products.</span><span class="l2">We were measuring pieces of them.</span></div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+$("#icon").src = T.icon;
+
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+function div(cls, parent, css) { const d = document.createElement("div"); d.className = cls; if (css) d.style.cssText = css; parent.appendChild(d); return d; }
+const dOf = (poly) => "M" + poly.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" L") + " Z";
+
+// ---- the cast (illustrative): four app parcels on one baseline of the Apps pair, world y 637-642
+//   A  a front end that reads a database directly (fs1)          B  a front end that reads QVDs (fs10)
+//   G1, G2  B's two generators, both in one stream district (gs17) on the Generators island, across the river
+const CAST = { A: "f163", B: "f629", G1: "g1086", G2: "g1112" };
+// illustrative reload cost, as column heights in stage px: per app A is the tallest; per product B outgrows it
+const H = { A: 330, B: 24, G1: 165, G2: 205 };
+const GAP = 3;                       // the dark seam between stacked segments (.grp > .seg + .seg in the CSS)
+const COLW = 64;                     // .seg's width; the ghosts are 56 (.seg.ghost)
+const LEAD = 18;                     // label to column top: the lead's 10 px + its 4 + 4 margins (.grp > .lead)
+
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { cam: "apps", state: "S09-end" });
+  // the contract's start: S13's end at camera apps, dimmed; owner marks are world units, hidden at zoom > 1
+  h.setState("S09-end"); h.setState("dim");
+  gsap.set(h.layers.owners, { autoAlpha: 0 });
+  for (const [id, el] of h.labels) if (id !== "generators" && id !== "frontends") gsap.set(el, { autoAlpha: 0 });
+
+  const CAM = R.camera("apps");
+  const scr = (p) => [CAM.x + CAM.scale * p[0], CAM.y + CAM.scale * p[1]];
+  const P = Object.fromEntries(Object.entries(CAST).map(([k, id]) => [k, R.parcel(id)]));
+  for (const k in P) if (!P[k]) throw new Error(`s14: parcel ${CAST[k]} is not in WORLD`);
+  const X = Object.fromEntries(Object.entries(P).map(([k, p]) => [k, scr(p.c)[0]]));
+  const BASE = Math.round(Object.values(P).reduce((s, p) => s + scr(p.c)[1], 0) / 4);   // one baseline for all
+
+  // ---- clear ground for the footer band and the icon (camera apps puts the dark land under both): the stage
+  // colour ramps in from y 840, a canvas with a +-1 dither (a CSS gradient this dark bands on the GPU), frozen
+  const fb = document.createElement("canvas");
+  fb.width = 1920; fb.height = 260;
+  fb.style.cssText = "position:absolute;left:0;top:820px;width:1920px;height:260px;pointer-events:none";
+  h.container.insertBefore(fb, h.labelsEl);
+  {
+    const g = fb.getContext("2d"), id = g.createImageData(1920, 260), d = id.data, rnd = R.mulberry32(1414);
+    const [sr, sg, sb] = T.channels(T.stage);
+    for (let y = 0; y < 260; y++) {
+      const u = Math.min(1, Math.max(0, (y - 20) / 150)), a = u * u * (3 - 2 * u) * 0.96 * 255;
+      for (let x = 0; x < 1920; x++) {
+        const i = (y * 1920 + x) * 4;
+        d[i] = sr; d[i + 1] = sg; d[i + 2] = sb; d[i + 3] = Math.max(0, Math.min(255, a + (rnd() - 0.5) * 2));
+      }
+    }
+    g.putImageData(id, 0, 0);
+  }
+
+  // ---- a lifted world layer above the veil (world units, the camera's transform): footprints, districts, bridges
+  const lift = div("s14-lift", h.container, "position:absolute;left:0;top:0;width:1px;height:1px;transform-origin:0 0;pointer-events:none");
+  h.container.insertBefore(lift, h.labelsEl);
+  gsap.set(lift, CAM);
+  // a parcel lit where a column stands: the parcel filled and its glow (R.bloomCells), one small frozen canvas each
+  const RES = 2.5, PADW = 46;
+  function foot(p, colour, mode) {
+    const b = R.bb(p.p), rect = { x: Math.floor(b[0] - PADW), y: Math.floor(b[1] - PADW), w: 0, h: 0 };
+    rect.w = Math.ceil(b[2] + PADW) - rect.x; rect.h = Math.ceil(b[3] + PADW) - rect.y;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(rect.w * RES); cv.height = Math.round(rect.h * RES);
+    cv.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+    lift.appendChild(cv);
+    const ctx = cv.getContext("2d");
+    if (mode === "fill") {
+      R.bloomCells(ctx, [p.p], colour, 0.9, 16, rect, RES);
+      R.parcels(ctx, rect, RES, [p], { fill: colour, alpha: 0.92 });
+    } else {
+      R.parcels(ctx, rect, RES, [p], { stroke: colour, width: 2 });
+    }
+    return cv;
+  }
+  const fc = {
+    A: foot(P.A, T.app, "fill"), B: foot(P.B, T.app, "fill"),
+    G1: foot(P.G1, T.inkFaint, "line"), G2: foot(P.G2, T.inkFaint, "line"),
+    G1u: foot(P.G1, T.inUse, "fill"), G2u: foot(P.G2, T.inUse, "fill"),
+  };
+  const svg = svgEl("svg", { width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, lift);
+  svg.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  // the two stream districts: B's (Front ends) and its generators' (Generators), "another stream"
+  const dist = (p) => R.district((p.island === "generators" ? W.apps.generators : W.apps.frontends).streams[p.s].id);
+  const dStroke = { fill: T.rgba(T.inkFaint, 0.10), stroke: T.rgba(T.inkFaint, 0.6), "stroke-width": 1.6 / CAM.scale,
+    "stroke-linejoin": "round" };
+  const distG = svgEl("path", Object.assign({ d: dOf(dist(P.G1).poly) }, dStroke), svg);
+  const distB = svgEl("path", Object.assign({ d: dOf(dist(P.B).poly) }, dStroke), svg);
+  if (dist(P.G1).id !== dist(P.G2).id) throw new Error("s14: B's generators must share one stream district");
+  // the product links (bridges of light, S09's): each generator -> B's front end, arching over the river
+  const arc = (a, b, lift_) => ({ a: a.c, b: b.c, c: [(a.c[0] + b.c[0]) / 2, Math.min(a.c[1], b.c[1]) - lift_] });
+  const arc1 = Object.assign({ id: "s14-g1" }, arc(P.G1, P.B, 150)), arc2 = Object.assign({ id: "s14-g2" }, arc(P.G2, P.B, 112));
+  const br1 = R.lightBridge(svg, arc1, { core: 3 }).g;
+  const br2 = R.lightBridge(svg, arc2, { core: 3 }).g;
+  const brPaths = (g) => [...g.querySelectorAll("path")];
+  // the cost travelling: a short packet of light that runs the bridge from the generator to the front end
+  // (a halo and a white core on the bridge's own path, halo alpha x THEME.halo; no SVG filter)
+  function pulse(b) {
+    const g = svgEl("g", { "data-pulse": b.id }, svg), d = R.bridgeD(b);
+    svgEl("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 15, "stroke-opacity": 0.55 * T.halo, "stroke-linecap": "round" }, g);
+    svgEl("path", { d, fill: "none", stroke: T.inUse, "stroke-width": 7, "stroke-linecap": "round" }, g);
+    svgEl("path", { d, fill: "none", stroke: T.rgba(T.app, 0.95), "stroke-width": 3, "stroke-linecap": "round" }, g);
+    return g;
+  }
+  const pu1 = pulse(arc1), pu2 = pulse(arc2);
+
+  // ---- the columns (screen space, under the city's labels)
+  const cols = div("", h.container); cols.id = "cols";
+  h.container.insertBefore(cols, h.labelsEl);
+  // the column's light: two lit edges and a soft halo (alpha x THEME.halo, as every halo of the world)
+  // (the app light takes THEME.appLight.halo too: on paper the ink's halo is a shadow, so it stays faint)
+  const glow = (c, a) => `inset 2px 0 0 ${T.rgba(c, 0.75)}, inset -2px 0 0 ${T.rgba(c, 0.75)}, 0 0 26px ${T.rgba(c, a)}`;
+  const LIGHT = { app: [T.app, T.halo * T.appLight.halo], use: [T.inUse, T.halo] };
+  function seg(cls, parent, x, off) {
+    const s = div("seg " + cls, parent), kind = cls.split(" ")[0];
+    if (x != null) {
+      s.style.left = (x - (kind === "ghost" ? 56 : COLW) / 2).toFixed(1) + "px";
+      s.style.bottom = (1080 - BASE + off).toFixed(1) + "px";
+    }
+    if (LIGHT[kind]) {
+      const [c, k] = LIGHT[kind];
+      s.style.boxShadow = glow(c, (kind === "use" ? 0.6 : 0.5) * k);
+      s.style.setProperty("--cap", T.rgba(c, 0.75 * k));
+      s.style.setProperty("--foot", T.rgba(c, 0.6 * k));
+    }
+    if (kind === "ghost") div("fill", s);
+    return s;
+  }
+  // the tallest per-app column's height, dashed back across the map: the line B's stack will outgrow
+  const ref = div("", cols); ref.id = "ref";
+  const refL = X.B - COLW / 2 - 56, refR = X.A + COLW / 2 + 12;
+  ref.style.cssText += `left:${refL.toFixed(1)}px;width:${(refR - refL).toFixed(1)}px;top:${(BASE - H.A - 1).toFixed(1)}px`;
+  const colA = seg("app base", cols, X.A, 0);
+  const ghost1 = seg("ghost", cols, X.G1, 0), ghost2 = seg("ghost", cols, X.G2, 0);
+  // B: one flex column standing on its parcel (bottom up): its own segment, the two generators' segments, a lead,
+  // the label slot. The label rides the top of the stack; until the stack is tall enough it waits above B's
+  // stream district (its outline would otherwise run through the words) with the lead down to the column
+  const grpB = div("grp", cols, `left:${(X.B - COLW / 2).toFixed(1)}px;width:${COLW}px;bottom:${(1080 - BASE).toFixed(1)}px`);
+  const colB = seg("app base", grpB), stack1 = seg("use", grpB), stack2 = seg("use", grpB);
+  const lead = div("lead", grpB), slot = div("slot", grpB);
+  const topB = H.B + GAP + H.G1 + GAP + H.G2;
+  if (!(topB > H.A + 40)) throw new Error("s14: per product, B must clearly outgrow A");
+
+  // ---- labels (screen space, above everything of the world)
+  const tags = div("", h.container); tags.id = "tags";
+  function tag(html, x, bottom, cls = "w-label") {
+    const t = div("tag " + cls, tags); t.innerHTML = html; t.__at = [x, bottom];
+    return t;
+  }
+  const gap = LEAD;
+  const tA1 = tag("<b>Reads a database directly</b><br><span class='w-dim'>looks the heaviest</span>", X.A, BASE - H.A - gap);
+  const gx = (X.G1 + X.G2) / 2, gTop = BASE - Math.max(H.G1, H.G2) - gap;
+  const tG1 = tag("<b>Its generators</b><br><span class='w-dim'>in another stream · not counted</span>", gx, gTop);
+  const tG2 = tag("<b>Its generators</b><br><span class='w-dim'>now counted in Product B</span>", gx, gTop);
+  const tA2 = tag("<b>Product A</b><br><span class='w-dim'>reads a database directly</span>", X.A, BASE - H.A - gap);
+  // B's two labels share the slot that rides its stack (same place, cross-faded)
+  const tB1 = div("tag w-label", slot), tB2 = div("tag w-label", slot);
+  tB1.innerHTML = "<b>Front end · reads QVDs</b><br><span class='w-dim'>looks almost free</span>";
+  tB2.innerHTML = "<b>Product B</b><br><span class='w-dim'>front end + its generators</span>";
+  // the lowest the slot may sit: its words 14 px clear of the top of B's stream district (outlined from s2)
+  const distTop = Math.min(...dist(P.B).poly.map((q) => scr(q)[1]));
+
+  // ---- freeze the footprints, fonts, place the labels
+  const fz = await R.freeze([...Object.values(fc), fb]);
+  const F = Object.fromEntries(Object.keys(fc).map((k, i) => [k, fz[i]]));
+  await Promise.all(["400", "500", "700"].map((w) => document.fonts.load(`${w} 26px Vodafone`)));
+  await document.fonts.ready;
+  for (const t of tags.children) {
+    const [x, b] = t.__at;
+    // left / top, not a transform: GSAP tweens y on top of it (a translate would be parsed and replaced)
+    t.style.left = (x - t.offsetWidth / 2).toFixed(1) + "px"; t.style.top = (b - t.offsetHeight).toFixed(1) + "px";
+  }
+  grpB.style.minHeight = (BASE - (distTop - 14) + slot.offsetHeight).toFixed(1) + "px";
+
+  // ---- s0: the state before the first click
+  gsap.set(Object.values(F), { autoAlpha: 0 });
+  gsap.set([distG, distB, br1, br2, ref], { autoAlpha: 0 });
+  gsap.set([...brPaths(br1), ...brPaths(br2)], { drawSVG: "0%" });
+  gsap.set(ref, { clipPath: "inset(0px 0px 0px 100%)" });
+  gsap.set([tA1, tB1, tG1], { autoAlpha: 0, y: 10 });
+  gsap.set([tA2, tB2, tG2, lead], { autoAlpha: 0 });      // the second labels cross-fade in place
+  gsap.set([pu1, pu2], { autoAlpha: 0 });
+  gsap.set([...brPaths(pu1), ...brPaths(pu2)], { drawSVG: "0% 0%" });
+  gsap.set([colA, colB, ghost1, ghost2, stack1, stack2], { height: 0, autoAlpha: 0 });
+  gsap.set("#m-prod", { autoAlpha: 0, y: 12 });
+  gsap.set(["#close .l1", "#close .l2"], { autoAlpha: 0, y: 14 });
+
+  const M = R.MOTION;
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+
+  // s0 -> s1: per app. The direct-database app rises tallest; the QVD front end barely leaves the ground
+  let t = 0.05;
+  // S09's bridges recede: from here the only links on the map are the product's own
+  tl.to(h.layers.bridged, { autoAlpha: 0, duration: 0.6, ease: M.light }, t);
+  tl.to([F.A, F.B], { autoAlpha: 1, duration: 0.5, ease: M.light, stagger: 0.12 }, t);
+  tl.set([colA, colB], { autoAlpha: 1 }, t + 0.2);
+  tl.to(colA, { height: H.A, duration: 1.3, ease: M.rise }, t + 0.2);
+  tl.to(colB, { height: H.B, duration: 0.7, ease: M.rise }, t + 0.55);
+  tl.to(tA1, { autoAlpha: 1, y: 0, duration: 0.6, ease: M.rise }, t + 0.95);
+  tl.to(tB1, { autoAlpha: 1, y: 0, duration: 0.6, ease: M.rise }, t + 1.1);
+  tl.to(lead, { autoAlpha: 1, duration: 0.5, ease: M.light }, t + 1.2);
+  tl.set(ref, { autoAlpha: 1 }, t + 1.2);
+  tl.to(ref, { clipPath: "inset(0px 0px 0px 0%)", duration: 1.0, ease: M.beam }, t + 1.2);
+  tl.addLabel("s1", t + 2.2);
+
+  // s1 -> s2: its generators, in another stream: two districts outlined, two dashed columns, not counted
+  t = tl.labels.s1;
+  tl.to([distB, distG], { autoAlpha: 1, duration: 0.6, ease: M.light, stagger: 0.25 }, t);
+  tl.to([F.G1, F.G2], { autoAlpha: 1, duration: 0.4, ease: M.light, stagger: 0.1 }, t + 0.5);
+  tl.set([ghost1, ghost2], { autoAlpha: 1 }, t + 0.65);
+  tl.to(ghost1, { height: H.G1, duration: 1.0, ease: M.rise }, t + 0.65);
+  tl.to(ghost2, { height: H.G2, duration: 1.0, ease: M.rise }, t + 0.8);
+  tl.to(tG1, { autoAlpha: 1, y: 0, duration: 0.6, ease: M.rise }, t + 1.2);
+  tl.addLabel("s2", t + 1.9);
+
+  // s2 -> s3: per product. The links light up; each generator's cost drains and flows over its bridge onto B
+  t = tl.labels.s2;
+  tl.to("#m-app", { autoAlpha: 0, y: -12, duration: 0.35, ease: M.lift }, t);
+  tl.to("#m-prod", { autoAlpha: 1, y: 0, duration: 0.5, ease: M.rise }, t + 0.25);
+  // the columns keep their names through the flip: A and B are renamed in place as the measure swaps, and B's
+  // name then rides the top of its stack (the .grp layout) as it overtakes A; the lead to B's short column goes
+  const xf = (a, b, at) => {
+    tl.to(a, { autoAlpha: 0, duration: 0.3, ease: M.light }, at);
+    tl.to(b, { autoAlpha: 1, duration: 0.4, ease: M.light }, at + 0.2);
+  };
+  xf(tA1, tA2, t + 0.3);
+  xf(tB1, tB2, t + 0.3);
+  tl.to(lead, { autoAlpha: 0, duration: 0.35, ease: M.light }, t + 0.3);
+  // each generator: the bridge draws, its column drains, a packet of light carries the cost across the river
+  // and lands on B just as that segment of the stack starts to rise
+  const flow = (br, pu, ghost, foot, footU, stack, h0, at) => {
+    tl.set(br, { autoAlpha: 1 }, at);
+    tl.to(brPaths(br), { drawSVG: "100%", duration: 0.8, ease: M.beam }, at);
+    tl.to(foot, { autoAlpha: 0, duration: 0.4, ease: M.light }, at + 0.1);
+    tl.to(footU, { autoAlpha: 1, duration: 0.5, ease: M.light }, at + 0.1);
+    tl.to(ghost.querySelector(".fill"), { height: "0%", duration: 0.75, ease: M.travel }, at + 0.3);
+    const p = brPaths(pu), go = at + 0.6;
+    tl.set(pu, { autoAlpha: 1 }, go);
+    tl.to(p, { drawSVG: "0% 18%", duration: 0.15, ease: "none" }, go);
+    tl.to(p, { drawSVG: "82% 100%", duration: 0.55, ease: "sine.inOut" }, go + 0.15);
+    tl.to(p, { drawSVG: "100% 100%", duration: 0.15, ease: "none" }, go + 0.7);
+    tl.set(pu, { autoAlpha: 0 }, go + 0.85);
+    tl.set(stack, { autoAlpha: 1 }, go + 0.78);
+    tl.to(stack, { height: h0, duration: 0.75, ease: M.rise }, go + 0.78);
+  };
+  flow(br1, pu1, ghost1, F.G1, F.G1u, stack1, H.G1, t + 0.5);
+  flow(br2, pu2, ghost2, F.G2, F.G2u, stack2, H.G2, t + 1.25);
+  tl.to([ghost1, ghost2], { opacity: 0.5, duration: 0.6, ease: M.light }, t + 2.3);
+  xf(tG1, tG2, t + 2.4);
+  tl.addLabel("s3", t + 3.5);
+
+  // s3 -> s4: the sentence
+  t = tl.labels.s3;
+  tl.to("#close .l1", { autoAlpha: 1, y: 0, duration: 0.7, ease: M.rise }, t + 0.05);
+  tl.to("#close .l2", { autoAlpha: 1, y: 0, duration: 0.7, ease: M.rise }, t + 0.4);
+  tl.addLabel("s4", t + 1.1);           // = the timeline's end (the last tween ends here)
+
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4"]);
+})();
+</script>
+</body>
+</html>

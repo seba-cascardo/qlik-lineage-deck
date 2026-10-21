@@ -1,0 +1,75 @@
+KIT DE PRUEBA · Qlik Lineage
+=============================
+
+Qué es: la presentación completa, 19 escenas en orden (S01 a S19). Respaldo en PDF: backup/qlik-lineage-backup.pdf.
+
+Cómo copiarlo
+- Copiá la carpeta "deck" (con "shared", "scenes", "thumbs" y "backup" adentro). La carpeta "qa", si está, no hace
+  falta: son capturas de las pruebas. No muevas archivos sueltos.
+
+Cómo abrirlo
+1. Doble clic en "Abrir presentacion.bat": abre la presentación en una ventana de Edge sin pestañas ni barra de
+   direcciones, así nadie ve la ruta del archivo (que lleva tu usuario). También anda doble clic en index.html (o
+   arrastrarlo a Edge), pero esa ventana sí muestra la ruta. No necesita internet ni instalar nada.
+2. Tecla N: se abre la ventana de presentador (notas, reloj y una imagen de la escena siguiente).
+3. Tecla F (o F11): pantalla completa, sólo en una pantalla 16:9 (la laptop sola, un proyector). En el monitor de
+   57 pulgadas no: ver la sección siguiente.
+- Tema claro (plan B): la tecla L en la ventana de presentador. Con index.html abierto en una pestaña común también
+  sirve agregar ?theme=day al final de la dirección (index.html?theme=day).
+
+Presentar en el monitor de 57 pulgadas
+Teams comparte una pantalla entera o una ventana, nunca un pedazo de pantalla. Por eso la presentación va en su propia
+ventana, en el centro del monitor, y en Teams se comparte esa ventana sola: tu guion y el chat quedan a los costados,
+fuera de lo que se ve.
+1. Doble clic en "Abrir presentacion.bat".
+2. Con esa ventana al frente, Win+Z y elegí el diseño de tres columnas (25 / 50 / 25): la presentación va en la del
+   centro, que queda más o menos 16:9.
+3. Tecla N para la ventana de presentador, y llevala a una columna de costado (Win+Z con esa ventana al frente). En la
+   otra columna, el chat de Teams.
+4. En Teams: Compartir > Ventana > la que se llama "Qlik Lineage". Ni la pantalla entera (se verían tus notas y el
+   chat) ni la ventana "Presentador · Qlik Lineage".
+5. No uses F ahí: la pantalla completa ocupa todo el monitor y tapa las notas y el chat.
+6. P prende y apaga el medidor de fps. Se ve en la ventana de presentador, que no se comparte. Si no hay ventana de
+   presentador abierta, aparece en un recuadro chico arriba a la derecha de la presentación, y ese sí se ve en Teams:
+   sirve para la prueba, no para la charla.
+
+Teclas
+- Flecha derecha / PageDown / clicker: siguiente paso
+- Flecha izquierda / PageUp: paso anterior
+- Barra espaciadora: pausa o reanuda una secuencia que está corriendo
+- B: pantalla en negro (otra vez B para volver)
+- T: reinicia el reloj del presentador (el reloj arranca solo con el primer clic)
+- P: medidor de fps, para la prueba de Teams (otra vez P para apagarlo). Mide cada secuencia (los movimientos de
+  1,5 s o más que corren de punta a punta; si cortás una con un clic, no cuenta) y la compara con la meta: 50 fps o
+  más de promedio y p95 de 25 ms o menos. p95 quiere decir que el 95 % de los cuadros tardó eso o menos: si sube, se
+  notan tirones aunque el promedio dé bien. OK sale en celeste y FALLA en rojo.
+- Las mismas teclas funcionan con el foco en la ventana de presentador.
+- L (sólo en la ventana de presentador, para pruebas): cambia de tema, oscuro (night) o claro (day), y recarga las dos
+  ventanas en la misma escena. El reloj vuelve a cero, el medidor se apaga y se sale de pantalla completa: F otra vez
+  si la estabas usando.
+
+Qué probar (y avisame qué falla)
+[ ] Se ve la tipografía Vodafone (no una genérica) y el ícono abajo a la derecha.
+[ ] Las 19 escenas pasan en orden con la flecha derecha. Desde el último paso de una escena, el cambio a la siguiente
+    es inmediato si estuviste ahí unos segundos: la siguiente se carga mientras hablás sobre ese último paso, nunca antes
+    (así los clics en medio de una escena responden enseguida).
+[ ] Si pasaste de escena sin querer, la flecha izquierda enseguida vuelve a la anterior tal como estaba (también si
+    la siguiente todavía estaba cargando).
+[ ] Al revés: si en el primer paso de una escena apretaste la flecha izquierda sin querer, la flecha derecha enseguida
+    te deja donde estabas, sin pasar al paso siguiente.
+[ ] Un clic durante una secuencia la termina de golpe (no la saltea). (Se prueba cuando haya escenas con secuencia.)
+[ ] Flecha izquierda vuelve atrás, también entre escenas (vuelve al final de la escena anterior).
+[ ] La ventana de presentador muestra notas, paso, reloj, el tema y la imagen de la escena siguiente.
+[ ] L en la ventana de presentador pasa todo a claro, y otra vez L vuelve a oscuro.
+[ ] El clicker avanza y retrocede (si su botón "play" manda F5, no recarga la página).
+[ ] En una llamada de Teams de prueba, compartiendo la ventana "Qlik Lineage" (no la pantalla): la secuencia se ve
+    fluida y el texto se lee.
+[ ] Prueba de Teams con el medidor, en el monitor de 57 pulgadas, armado como en "Presentar en el monitor de 57
+    pulgadas": P, y pasá de S04 a S11 (y cualquier otra escena con movimiento) mientras mirás desde otro dispositivo
+    en la misma reunión (el teléfono u otra PC). La ventana del centro tiene unos 3840 × 2160 píxeles, cuatro veces lo
+    que se midió acá, así que el medidor dice si la laptop llega: cada secuencia tiene que dar 50 fps o más y p95 de
+    25 ms o menos. Anotá cualquiera que salga en rojo (FALLA) y, al final, sacale una captura a la lista de la ventana
+    de presentador.
+[ ] La misma prueba con el HDR de Windows encendido y apagado para ese monitor (Configuración > Sistema > Pantalla,
+    elegí el monitor de 57 pulgadas > Usar HDR): del otro lado de Teams, ¿el mapa nocturno se ve lavado (negros
+    grisáceos, poco contraste) con el HDR encendido?

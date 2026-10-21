@@ -1,0 +1,54 @@
+/* Brand tokens shared by every scene. Fonts load from local files: the deck runs offline. */
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_XLt_W.woff2") format("woff2"); font-weight: 200; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_Lt_W.woff2") format("woff2"); font-weight: 300; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_Rg_W.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_Bk_W.woff2") format("woff2"); font-weight: 450; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_Md_W.woff2") format("woff2"); font-weight: 500; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_SBd_W.woff2") format("woff2"); font-weight: 600; }
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_Bd_W.woff2") format("woff2"); font-weight: 700; }
+/* ExtraBold is reserved for Vodafone "Living Typography": one word, uppercase, red. */
+@font-face { font-family: "Vodafone"; src: url("fonts/Vodafone_XBd_W.woff2") format("woff2"); font-weight: 800; }
+
+:root {
+  --vf-red: #E60000;
+  --ink: #25282B;
+  --grey: #4A4D4E;
+  --mid: #7E8385;
+  --line: #D9DCDD;
+  --soft: #F2F3F3;
+  --turq: #007C92;
+  --aqua: #00B0CA;
+  --orange: #EB9700;
+}
+
+html, body { margin: 0; padding: 0; }
+
+/* Every scene is a fixed 1920x1080 canvas; the player scales it. */
+body.scene {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  color: var(--ink);
+  font-family: "Vodafone", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.scene-title {
+  position: absolute;
+  left: 120px;
+  top: 92px;
+  margin: 0;
+  font-size: 64px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.vf-icon {
+  position: absolute;
+  right: 64px;
+  bottom: 56px;
+  width: 72px;
+  height: 72px;
+}

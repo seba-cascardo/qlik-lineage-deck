@@ -1,0 +1,111 @@
+/*
+ * Text on the world (deck/shared/world/world.css): the label classes of the night-map deck, Task 4 of
+ * docs/plans/2026-10-20-night-map-deck.md. Load after tokens.css; colours come only from the variables theme.js
+ * sets on :root (qa/lint_colors.py), so every class follows ?theme=night|day.
+ *
+ *   .w-label      a name on the map: 26 px Medium, --ink, names in <b> (Bold); a soft plate of the stage colour
+ *                 under it and a tight halo around the glyphs, so it separates from lights and texture at 720p
+ *                 (on day the halo only: a plate of paper on the grey land reads as a smudge)
+ *   .w-label-dim  the same, receding: what the audience already knows (--ink-faint; on day --ink-dim and a fuller
+ *                 halo, since the islands under it are mid-grey)
+ *   .w-dim        inside a label: the part that qualifies the name (a count, a scope), in --ink-dim, Regular
+ *   .w-hero       a hero number: Bold 150 px in --key (red), never Light
+ *   .w-note       a short note that may sit on the map ("Illustrative layout · real counts"): 24 px, --ink-dim,
+ *                 with the halo but no plate
+ *   .w-foot       the footer / footnote in its own band at the bottom, clear of the map: 24 px, --ink-dim
+ *
+ * Sizes are stage px (the scene is 1920x1080, scaled by the player): 24 px is the floor for anything a viewer
+ * must read (Global Constraints). Positions are the scene's: these classes set type, colour and ground only.
+ * Gated by qa/test_legibility.py on the probe at Teams 720p: (a) sizes, (c1) glyph contrast of .w-label,
+ * .w-label-dim, .w-note and .w-foot, (c2) the hero against its ground, (d) the classes themselves.
+ *
+ * A label's box is its text: no padding, no margin. A scene anchors a label as round-2 S09 does,
+ *   translate(sx - ax * el.offsetWidth, sy - ay * el.offsetHeight)
+ * and the words land on the anchor (qa/test_legibility.py (d) checks offsetWidth = the text's width). The plate is
+ * drawn by ::before, outside the layout: 10 px past the text left and right, 2 px above and below, round-cornered
+ * and feathered by its shadow, a pool of dark under the words, never a card with an edge. It is a child of the
+ * label, so it moves and fades with it. For that the label is its own containing block and stacking context:
+ * isolation: isolate, and position: relative at zero specificity (:where), so any position a scene gives its
+ * labels (absolute, as every map label is) wins whatever the stylesheet order.
+ */
+.w-label, .w-label-dim, .w-note, .w-foot, .w-hero {
+  font-family: "Vodafone", system-ui, sans-serif;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------- map labels */
+:where(.w-label, .w-label-dim) { position: relative; }   /* only if the scene does not position the label */
+.w-label, .w-label-dim {
+  --w-plate: color-mix(in srgb, var(--stage) 68%, transparent);
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 500;
+  color: var(--ink);
+  isolation: isolate;            /* the plate (z-index -1) stays under the words, above the map */
+  text-shadow: 0 0 2px var(--stage), 0 0 4px var(--stage), 0 0 7px var(--stage);
+}
+.w-label::before, .w-label-dim::before {
+  content: "";
+  position: absolute;
+  inset: -2px -10px;
+  z-index: -1;
+  border-radius: 14px;
+  background: var(--w-plate);
+  box-shadow: 0 0 14px 8px var(--w-plate);
+  pointer-events: none;
+}
+/* on paper the stage is lighter than the land, so a plate of it reads as a pale smudge round the words
+   (qa/legibility/options/options_day_land_x2.png): day keeps the halo only */
+[data-theme="day"] .w-label::before, [data-theme="day"] .w-label-dim::before { content: none; }
+.w-label-dim { color: var(--ink-faint); }
+/* day: the known islands' names (Metadata, Reloads, Sessions, Telemetry) sit on mid-grey land; --ink-faint read grey
+   on grey at 720p. A step darker (--ink-dim, still lighter than --ink) and a fuller halo of the stage (tight
+   layers stacked for an opaque rim, wider ones for a soft pool, never a plate): (c1) on day ~0.46 -> ~0.59 */
+[data-theme="day"] .w-label-dim {
+  color: var(--ink-dim);
+  text-shadow: 0 0 1px var(--stage), 0 0 2px var(--stage), 0 0 3px var(--stage), 0 0 5px var(--stage),
+    0 0 8px var(--stage), 0 0 12px var(--stage), 0 0 16px var(--stage);
+}
+.w-label b, .w-label-dim b { font-weight: 700; }
+.w-dim { color: var(--ink-dim); font-weight: 400; }
+.w-label-dim .w-dim { color: var(--ink-faint); }
+
+/* ---------------------------------------------------------------- the city's labels (round-3 kit, 2026-10-21)
+   R.labels() gives every map label .w-at plus its class from WORLD.labels; R.placeLabels() sets its transform.
+   .w-qm   the "?" of S04 in the river: Bold 76 px in --in-use, a tight rim of the stage so it separates from the
+           banks, then a soft halo of its own light (round-3 critique: at 44 px the white bridges outshone it)
+   .w-terr the land's territories (On-prem, GCP, AWS): a .w-label, slightly tracked
+   .w-route S09's route labels: a .w-label in --ink */
+.w-at { position: absolute; left: 0; top: 0; }
+.w-qm { font-family: "Vodafone", system-ui, sans-serif; font-size: 76px; line-height: 76px; font-weight: 700; color: var(--in-use);
+  white-space: nowrap;
+  text-shadow: 0 0 2px var(--stage), 0 0 4px var(--stage),
+    0 0 14px color-mix(in srgb, var(--in-use) 50%, transparent), 0 0 34px color-mix(in srgb, var(--in-use) 28%, transparent); }
+.w-terr { letter-spacing: 0.02em; }
+.w-route { color: var(--ink); }
+
+/* ---------------------------------------------------------------- the hero number */
+.w-hero {
+  font-size: 150px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--key);
+  letter-spacing: -0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ---------------------------------------------------------------- notes and footer */
+.w-note {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 400;
+  color: var(--ink-dim);
+  text-shadow: 0 0 2px var(--stage), 0 0 4px var(--stage), 0 0 7px var(--stage);
+}
+.w-foot {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 400;
+  color: var(--ink-dim);
+}

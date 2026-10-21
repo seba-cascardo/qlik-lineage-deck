@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S09 · One clue became a method</title>
+<!--
+  S09 One clue became a method (Task 6 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S09; the world of
+  docs/superpowers/specs/2026-10-20-world-cadastre-design.md, through deck/shared/world/SCENE_BRIEF.md).
+    s0  = S08's end: camera diary, the world dim (S06-end + dim), labelled; ONE wide log sheet on the left (the
+        generator's diary) with LIB CONNECT lensed in red, "connected to a database" and "the clue we just found";
+        S08's lit list (its 89 connections in use, drawn as s08.html draws them, above the veil) and its count block
+        "Data connections / 89 of 203 in use" under the island, in place of the island's own name (QA 2026-10-21:
+        the cut dropped both and s5 lit the 89 again as if new)
+    s1  STORE · "saved a file"; the clue cools from red to the colour of a relationship (--in-use); the sheets' ground
+        (the left veil) comes up
+    s2  the front end's diary (a second sheet, same width) slides in under it; LOAD · "read a file"
+    s3  LET in both diaries · "declared: holds PII data"
+    s4  continuous (about 8.5 s): S08's list and its count fade as the camera opens the map beside the sheets (camera
+        ROUTE), the names leave the
+        lines (their glyphs dim as they lift) and the traced route is drawn: generator -> SALES_DB, generator ->
+        sales_orders.qvd inside SalesContainer ("one file", "a project folder"), that file -> the front end; the
+        file name is underlined red in both diaries, two red rules run on under each line and converge on the file,
+        MATCH (Living Typography, the talk's one) slams, holds about 1.2 s and collapses onto the file; the
+        generator -> front end bridge crosses the river over the "?", which goes
+    s5  continuous (about 4.3 s): the sheets and their ground are put away, the traced route fades, the camera goes
+        to full (the Auditor islands keep their names through the move); S06's dashed links come back and turn
+        solid one by one, each lighting what it found: Data connections (S08's 89 in use back, as the recap), the land (the second port
+        built, 2,773 used files lit), and last the "?" crossing ("587 products", beside that bridge). The world
+        rests in exactly WorldStage "S09-end" (bridged in, needed and the "?" out, owners half) under the counts;
+        the footnote on log retention in its own bottom band
+  Colours only from THEME / the CSS variables of deck/shared/world/theme.js (qa/lint_colors.py).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }                       /* WorldStage mounts the world here */
+  #lveil { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -2px; color: var(--ink); }   /* ink from y 54, x 96 (-2: the O's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }     /* bottom band, clear of the icon (baseline > 1032) */
+  /* the headline's own ground while the camera moves from ROUTE to full (the map passes under it for a moment):
+     10 px either side of the text box (x 94), the title's line box (41-111) inset by 2 */
+  #tplate { position: absolute; left: 84px; top: 43px; height: 66px; border-radius: 18px; pointer-events: none;
+    background: color-mix(in srgb, var(--stage) 74%, transparent);
+    box-shadow: 0 0 18px 10px color-mix(in srgb, var(--stage) 74%, transparent); visibility: hidden; opacity: 0; }
+  #foot { position: absolute; left: 96px; top: 1012px; visibility: hidden; opacity: 0; }
+
+  /* ---------------------------------------------------------------- the diaries: one width, every line on one row */
+  .sheet { position: absolute; left: 96px; top: 0; width: 840px; will-change: transform; }   /* own layer: slides cheaply */
+  .paper { position: absolute; left: 0; top: 0; width: 840px; overflow: hidden; border-radius: 4px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-ink) 9%, transparent),
+      0 18px 46px color-mix(in srgb, var(--paper-ink) 22%, transparent); }
+  .paper > img, .paper > canvas { position: absolute; left: 0; top: 0; display: block; }
+  .shead { position: absolute; left: 24px; right: 24px; top: 14px; height: 36px; white-space: nowrap; }
+  .shead .t { font-size: 28px; line-height: 36px; font-weight: 700; color: var(--paper-ink); }
+  .shead .t span { font-size: 24px; font-weight: 400; color: var(--paper-ink-faint); margin-left: 10px; }
+  .shead .m { position: absolute; right: 0; top: 2px; font-size: 24px; line-height: 32px; color: var(--paper-ink-faint); }
+  .shead .t .ttl { margin: 0; font-size: 28px; font-weight: 700; color: var(--paper-ink); }
+  .srule { position: absolute; left: 24px; right: 24px; top: 58px; height: 2px;
+    background: color-mix(in srgb, var(--paper-ink) 12%, transparent); }
+  .row { position: absolute; left: 0; top: 0; width: 840px; height: 28px; white-space: nowrap; }
+  .row .no { position: absolute; left: 20px; width: 48px; text-align: right; font-size: 20px; line-height: 28px;
+    color: var(--paper-ink-faint); font-variant-numeric: tabular-nums; }
+  .row .tx { position: absolute; left: 84px; top: 0; font-size: 20px; line-height: 28px; color: var(--paper-ink-faint); }
+  .row .tx b { font-weight: 700; }
+  .row.hd { opacity: 0.4; }                                    /* the header block, faded to 40 % */
+  .row.key { height: 36px; }
+  .row.key .no { line-height: 36px; font-size: 20px; }
+  .row.key .tx { font-size: 24px; line-height: 36px; color: var(--paper-ink-dim); }
+  .band { position: absolute; left: 76px; top: 2px; height: 32px; border-radius: 3px; transform-origin: 0 50%; }
+  .note { position: absolute; left: 84px; top: 36px; font-size: 24px; line-height: 34px; font-weight: 500; }
+  .note::before { content: ""; display: inline-block; width: 22px; height: 3px; background: currentColor;
+    vertical-align: 7px; margin-right: 12px; }
+  .note .aside { font-weight: 400; color: var(--paper-ink-faint); margin-left: 16px; }
+  .nm { position: relative; }
+  .nm i { position: absolute; left: 0; right: 0; bottom: 1px; height: 3px; transform: scaleX(0); transform-origin: 0 50%; }
+
+  /* ---------------------------------------------------------------- names lifted off the lines, route labels */
+  #chips { position: absolute; inset: 0; pointer-events: none; }
+  #chips .w-label { position: absolute; left: 0; top: 0; transform-origin: 0 0; visibility: hidden; opacity: 0; }
+  #counts { position: absolute; inset: 0; pointer-events: none; }
+  #counts .w-label { position: absolute; left: 0; top: 0; visibility: hidden; opacity: 0; }
+  .num { color: var(--in-use); font-weight: 700; }
+  /* S08's count block under Data connections, as s08.html writes it (its #cblock: the island's own name moves here,
+     nothing sits on the lit list); S09 holds it from s0 until the camera leaves for ROUTE */
+  #cblock { position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none; }
+  #cblock .cbl { font-size: 26px; line-height: 34px; font-weight: 500; color: var(--ink); }
+  #cblock .cbl b { font-weight: 700; }
+  #cblock .cbn { font-size: 28px; line-height: 64px; font-weight: 500; color: var(--ink-dim); }
+  #cblock .num { color: var(--in-use); font-weight: 700; font-size: 56px; display: inline-block; min-width: 2ch; text-align: right;
+    font-variant-numeric: tabular-nums; }
+  /* day labels have a halo only (world.css); the counts and "Containers" sit over lit cells at s5: a plate on day too
+     (as S08 does for its lit list) */
+  [data-theme="day"] .w-label[data-plate="1"]::before { content: ""; position: absolute; inset: -2px -10px; z-index: -1;
+    border-radius: 14px; background: color-mix(in srgb, var(--stage) 78%, transparent);
+    box-shadow: 0 0 14px 8px color-mix(in srgb, var(--stage) 78%, transparent); pointer-events: none; }
+  svg.fx { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+  #match { position: absolute; left: 0; top: 0; margin: 0; font-size: 260px; line-height: 260px; font-weight: 800;
+    letter-spacing: 0.01em; color: var(--key); white-space: nowrap; transform-origin: 50% 50%;
+    text-shadow: 0 0 6px var(--stage), 0 0 22px color-mix(in srgb, var(--stage) 70%, transparent);
+    visibility: hidden; opacity: 0; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <canvas id="lveil" width="480" height="270"></canvas>
+  <div id="sheets"></div>
+  <svg class="fx" id="fx" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="counts"></div>
+  <div id="cblock"><div class="cbl"><b>Data connections</b></div><div class="cbn"><span class="num" id="cnt"></span><span id="cbof"></span></div></div>
+  <div id="chips"></div>
+  <div id="tplate"></div>
+  <h1 class="scene-title">One clue became a method</h1>
+  <div id="foot" class="w-foot">Qlik keeps reload logs for two months · our own copy: four months and growing</div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <div id="match">MATCH</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, E = R.MOTION;
+const $ = (s, el = document) => el.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+$("#icon").src = T.icon;
+
+/* ------------------------------------------------------------------ colours, all from tokens (runtime strings) */
+const mixC = (a, b, k) => { const A = T.channels(a), B = T.channels(b); return A.map((v, i) => Math.round(v * k + B[i] * (1 - k))); };
+const COL = {
+  red: T.rgb(T.key), redTint: T.rgba(T.key, 0.13),
+  // the colour of a relationship, written on paper: --in-use stepped toward the paper's ink so it reads at 24 px
+  use: T.rgb(mixC(T.inUse, T.paperInk, 0.62)), useTint: T.rgba(T.inUse, 0.2), useLine: T.rgb(T.inUse),
+  grey: T.rgb(T.paperInkDim), greyTint: T.rgba(T.paperInk, 0.08),
+  ink: T.rgb(T.paperInk),
+};
+
+/* ------------------------------------------------------------------ the camera that opens the map beside the sheets */
+// screen = (x, y) + scale * world. The traced route sits in x 1000-1800, the sheets keep x 96-936 (separate zones);
+// the land's bottom and its sea rings end above y 930, so nothing passes under the icon (the world's icon air holds
+// at camera full only)
+const ROUTE = { x: 306, y: -218, scale: 1.1 };
+const scr = (p, c = ROUTE) => [c.x + c.scale * p[0], c.y + c.scale * p[1]];
+const RT = W.route, BR = Object.fromEntries(RT.bridges.map((b) => [b.id, b]));
+const SC = W.land.containers.find((c) => c.id === W.sales_container);
+
+/* ------------------------------------------------------------------ the two diaries (foundation/reload-log-*.txt) */
+const NOTES = {
+  db: { text: "connected to a database", aside: "the clue we just found" },
+  store: { text: "saved a file" },
+  load: { text: "read a file" },
+  let: { text: "declared: holds PII data" },
+};
+const SHEETS = {
+  gen: { title: "Generator app", kind: "", meta: "reload log · 12 Oct 2026 · 06:00", rows: [
+    { hd: true, tx: "Execution started." },
+    { no: "0013", key: "let", tx: "<b>LET</b> vPII = 'Yes'" },
+    { no: "0021", tx: "// ---- Extract: sales orders ----" },
+    { no: "0022", key: "db", tx: "<b>LIB CONNECT TO</b> '<span class=\"nm\" data-n=\"db\">SALES_DB<i></i></span>'" },
+    { no: "0024", tx: "<b>SQL SELECT</b> * FROM dbo.SalesOrders" },
+    { no: "0026", key: "store", tx: "<b>STORE</b> SalesOrders INTO [lib://<span class=\"nm\" data-n=\"cont\">SalesContainer<i></i></span>/QVD/<span class=\"nm\" data-n=\"file\">sales_orders.qvd<i></i></span>] (qvd)" },
+    { no: "0027", tx: "<b>DROP TABLE</b> SalesOrders" },
+    { no: "0041", tx: "<b>DISCONNECT</b>" },
+  ] },
+  fe: { title: "Sales YoY", kind: "front end", meta: "reload log · 12 Oct 2026 · 07:02", rows: [
+    { hd: true, tx: "Execution started." },
+    { no: "0011", key: "let", tx: "<b>LET</b> vPII = 'Yes'" },
+    { no: "0018", tx: "// ---- Data model ----" },
+    { no: "0020", key: "load", tx: "<b>LOAD</b> * FROM [lib://SalesContainer/QVD/<span class=\"nm\" data-n=\"file\">sales_orders.qvd<i></i></span>] (qvd)" },
+    { no: "0024", tx: "<b>LOAD</b> * FROM [lib://SalesContainer/QVD/customers.qvd] (qvd)" },
+    { no: "0028", tx: "<b>LOAD</b> * FROM [lib://MasterContainer/QVD/calendar.qvd] (qvd)" },
+  ] },
+};
+const TOP = 160, GAP = 24, HEAD = 70, TEX = 28, KEY = 36, NOTE = 36, PADB = 14;
+
+function buildSheet(id) {
+  const def = SHEETS[id];
+  const el = document.createElement("div"); el.className = "sheet"; el.id = "sheet-" + id;
+  const paper = document.createElement("div"); paper.className = "paper"; el.appendChild(paper);
+  el.insertAdjacentHTML("beforeend", `<div class="shead"><span class="t"><span class="ttl">${def.title}</span>${def.kind ? `<span>${def.kind}</span>` : ""}</span><span class="m">${def.meta}</span></div><div class="srule"></div>`);
+  const S = { id, el, paper, rows: [], title: $(".ttl", el) };
+  for (const r of def.rows) {
+    const row = document.createElement("div");
+    row.className = "row" + (r.hd ? " hd" : "") + (r.key ? " key" : "");
+    if (r.key) row.insertAdjacentHTML("beforeend", `<div class="band"></div>`);
+    row.insertAdjacentHTML("beforeend", `<span class="no">${r.no || ""}</span><span class="tx">${r.tx}</span>`);
+    const item = { el: row, key: r.key || null, h: r.key ? KEY : TEX, tx: $(".tx", row), no: $(".no", row) };
+    if (r.key) {
+      const n = NOTES[r.key];
+      row.insertAdjacentHTML("beforeend", `<div class="note"><span class="nt">${n.text}</span>${n.aside ? `<span class="aside">${n.aside}</span>` : ""}</div>`);
+      item.band = $(".band", row); item.note = $(".note", row); item.aside = $(".aside", row);
+      item.names = Object.fromEntries([...row.querySelectorAll(".nm")].map((e) => [e.dataset.n, e]));
+    }
+    el.appendChild(row);
+    S.rows.push(item);
+  }
+  $("#sheets").appendChild(el);
+  return S;
+}
+function layout(S, open) {
+  let y = HEAD; const ys = [];
+  for (const r of S.rows) { ys.push(y); y += r.h + (r.key && open.includes(r.key) ? NOTE : 0); }
+  return { ys, h: y + PADB };
+}
+const rowOf = (S, key) => S.rows.find((r) => r.key === key);
+
+// the paper: a soft dithered light from above (canvas, frozen), never a CSS gradient
+function paperCanvas(w, h, seed) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d"), id = g.createImageData(w, h), d = id.data, rn = R.mulberry32(seed);
+  const [pr, pg, pb] = T.channels(T.paper);
+  for (let y = 0; y < h; y++) {
+    const fy = y / h, dk = 9 * fy * fy;
+    for (let x = 0; x < w; x++) {
+      const fx = Math.abs(x - w / 2) / (w / 2), n = (rn() - 0.5) * 2, k = (y * w + x) * 4, s = dk + 4 * fx * fx;
+      d[k] = pr - s + n; d[k + 1] = pg - s + n; d[k + 2] = pb - s + n; d[k + 3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0);
+  return c;
+}
+
+// the sheets' own ground at the route camera: the stage, nearly opaque under title and sheets, gone by x 1010
+function leftVeil() {
+  const c = $("#lveil"), w = c.width, h = c.height, g = c.getContext("2d"), id = g.createImageData(w, h), d = id.data;
+  const [sr, sg, sb] = T.channels(T.stage), rn = R.mulberry32(91), x0 = 820 / 4, x1 = 1010 / 4;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = Math.max(0, Math.min(1, (x - x0) / (x1 - x0))), s = 1 - u * u * (3 - 2 * u), k = (y * w + x) * 4;
+    d[k] = sr; d[k + 1] = sg; d[k + 2] = sb; d[k + 3] = Math.max(0, Math.min(255, 0.94 * s * 255 + (rn() - 0.5) * 2));
+  }
+  g.putImageData(id, 0, 0);
+  c.style.width = "1920px"; c.style.height = "1080px";
+  return c;
+}
+
+/* ------------------------------------------------------------------ the method at scale: overlays in world units */
+function worldCanvas(h, rect, res) {
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res);
+  cv.style.cssText = `position:absolute;display:block;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px;visibility:hidden;opacity:0`;
+  h.world.insertBefore(cv, h.svg);
+  return cv;
+}
+// 89 of the 203 On-prem connections are in use (truth.json connections_onprem.used); which parcels is illustrative
+function connCanvas(h) {
+  const rect = { x: 250, y: 770, w: 590, h: 225 }, res = 2, cv = worldCanvas(h, rect, res), ctx = cv.getContext("2d");
+  const rn = R.mulberry32(909), ids = W.conn.parcels.map((p) => p.id).filter((id) => id !== RT.db);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rn() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const lit = [RT.db].concat(ids.slice(0, TRUTH.connections_onprem.used - 1));
+  R.parcels(ctx, rect, res, lit, { fill: T.inUse, alpha: 0.3 });
+  R.bloomCells(ctx, lit.map((id) => R.parcel(id).p), T.inUse, 0.22, 12, rect, res);
+  cv.__n = lit.length;
+  return cv;
+}
+// 587 products (truth.json apps.multi_app.products) have no canvas of their own (critique 2026-10-21: 587 faint
+// strands read as a smudge at 720p): their count stands beside the generators -> front ends bridge, the crossing
+// at the "?" that is the picture of a generator joined to its front end
+// 2,773 files used by apps people use (truth.json qvd_files.by_usage valid): the land's "valid" cells, lit
+function filesCanvas(h) {
+  const rect = { x: 850, y: 740, w: 960, h: 260 }, res = 2, cv = worldCanvas(h, rect, res), ctx = cv.getContext("2d");
+  const xf = (p) => [(p[0] - rect.x) * res, (p[1] - rect.y) * res];
+  const cells = [];
+  let files = 0;
+  R.land(ctx, { xf, s: res, gap: 0, gapAlpha: 0, only: (ct) => ct.cells.some((cl) => cl.u === "valid"),
+    style: (cl) => {
+      if (cl.u !== "valid") return null;
+      cells.push(cl.poly); files += cl.files;
+      return { ground: T.rgba(T.inUse, 0.07), rgb: T.inUse, lum: 0.2, add: false, minTile: 3.4 * res, minGrain: 2.0 * res,
+        gap: 0.8 * res, gapK: 0.32, dotK: 0.5, cover: 0.7, jx: 0.5, jy: 0.08 };
+    } });
+  R.bloomCells(ctx, cells, T.inUse, 0.2, 10, rect, res);
+  cv.__n = files;
+  return cv;
+}
+
+/* ------------------------------------------------------------------ S08's lit list, kept across the click (s0-s3) */
+// S08 ends on the 89 connections in use lit above the dim veil (its overlay "ov", moved by the camera): the same pick
+// (mulberry32(909), Fisher-Yates, SALES_DB first, = connCanvas above), drawn as s08.html draws it: all 203 in
+// --no-sign, the 88 others in its K batches by the time they lit, the bloom of all 89, SALES_DB as S07 lit it.
+// Returns the overlay; it fades as the camera leaves for ROUTE (s4) and s5 brings the 89 back as the recap
+function s08List(h) {
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;transform-origin:0 0;pointer-events:none";
+  h.container.insertBefore(ov, h.labelsEl);                              // above the veil (not dimmed), under the names
+  gsap.set(ov, R.camera("diary"));
+  const conn = W.conn.parcels, ids = conn.map((p) => p.id).filter((id) => id !== RT.db), rn = R.mulberry32(909);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rn() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const used = [RT.db].concat(ids.slice(0, TRUTH.connections_onprem.used - 1)).map((id) => R.parcel(id));
+  const cvs = [];
+  const worldCv = (rect, res) => {
+    const cv = document.createElement("canvas"); cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res);
+    cv.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+    ov.appendChild(cv); cvs.push(cv); return cv;
+  };
+  const tileRect = { x: 255, y: 772, w: 578, h: 220 }, tres = 2;
+  const tiles = (cv, list, fill, alpha) => {
+    const ctx = cv.getContext("2d");
+    R.parcels(ctx, tileRect, tres, list, { fill, alpha });
+    R.parcels(ctx, tileRect, tres, list, { stroke: T.sea, width: 1.4 });
+  };
+  tiles(worldCv(tileRect, tres), conn, T.noSign, 0.6);
+  // S08's batches (its tau / batchOf), each filled then outlined, in the order they lit: one canvas, same pixels
+  const N = used.length, A = 2.2, K = 10;
+  const tau = (i) => A * Math.sqrt((i - 1) / (N - 2)), batchOf = (i) => Math.min(K - 1, Math.floor((tau(i) / A) * K));
+  const batches = Array.from({ length: K }, () => []);
+  for (let i = 1; i < N; i++) batches[batchOf(i)].push(used[i]);
+  const usedCv = worldCv(tileRect, tres);
+  for (const list of batches) tiles(usedCv, list, T.inUse, 1);
+  const bloomRect = { x: 230, y: 750, w: 640, h: 270 };
+  R.bloomCells(worldCv(bloomRect, 2).getContext("2d"), used.map((p) => p.p), T.inUse, 0.55, 16, bloomRect, 2);
+  const dbRect = { x: RT.DB[0] - 60, y: RT.DB[1] - 50, w: 120, h: 100 }, dctx = worldCv(dbRect, 2).getContext("2d");
+  R.bloomCells(dctx, [used[0].p], T.inUse, 1, 14, dbRect, 2, 8);
+  R.parcels(dctx, dbRect, 2, [RT.db], { fill: T.inUse, alpha: 0.95 });
+  ov.__cvs = cvs; ov.__n = N;
+  return ov;
+}
+
+/* ------------------------------------------------------------------ build */
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { cam: "diary", state: "S06-end" });
+  h.setState("dim");                                                     // = S08's end: the world dim behind the diary
+  h.veil.style.willChange = "opacity";                                   // its own layer, as in S08 (s4 fades it twice)
+  const L = h.labels, lbl = (id) => L.get(id);
+  const atDiary = ["apps", "generators", "frontends", "reloads", "sessions", "telemetry", "metadata", "connections", "containers"];
+  const atRoute = ["reloads", "sessions", "telemetry", "metadata"];
+  const terr = ["terr-On-prem", "terr-GCP", "terr-AWS"].map(lbl);
+  gsap.set(terr, { autoAlpha: 0 });                                      // the land's territories crowd its name at diary
+
+  await Promise.all(["400 20px Vodafone", "700 20px Vodafone", "400 24px Vodafone", "500 24px Vodafone", "700 24px Vodafone",
+    "700 28px Vodafone", "500 28px Vodafone", "500 26px Vodafone", "700 26px Vodafone", "700 56px Vodafone", "800 260px Vodafone"]
+    .map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+
+  // ---- sheets
+  const S = { gen: buildSheet("gen"), fe: buildSheet("fe") };
+  for (const sh of Object.values(S)) for (const r of sh.rows) if (r.band) r.band.style.width = r.tx.offsetWidth + 16 + "px";
+  const OPEN = { s0: { gen: ["db"], fe: [] }, s1: { gen: ["db", "store"], fe: [] }, s2: { gen: ["db", "store"], fe: ["load"] },
+    s3: { gen: ["let", "db", "store"], fe: ["let", "load"] }, s4: { gen: [], fe: [] } };
+  const LY = {};
+  for (const k in OPEN) LY[k] = { gen: layout(S.gen, OPEN[k].gen), fe: layout(S.fe, OPEN[k].fe) };
+  const feTop = (k) => TOP + LY[k].gen.h + GAP;
+  const papers = {};
+  for (const id of ["gen", "fe"]) {
+    const maxH = LY.s3[id].h;
+    papers[id] = paperCanvas(840, maxH, id === "gen" ? 31 : 37);
+    S[id].paper.appendChild(papers[id]);
+  }
+  const lveil = leftVeil();
+
+  // ---- the route on the map (world units, in the world's SVG, above its layers)
+  const routeG = document.createElementNS(NS, "g"); routeG.setAttribute("data-layer", "s09-route"); h.svg.appendChild(routeG);
+  const svgEl = (tag, attrs, parent = routeG) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+  const cont = svgEl("path", { d: "M" + SC.poly.map((p) => p.join(",")).join(" L") + " Z", fill: T.rgba(T.inUse, 0.12), stroke: T.inUse,
+    "stroke-width": 2, "stroke-linejoin": "round" });
+  const bridge = {};
+  for (const id of ["db", "store", "load", "gf"]) {
+    const g = R.lightBridge(routeG, BR[id], { arrow: true, core: id === "gf" ? 2.8 : 3.4 }).g;
+    const ps = [...g.querySelectorAll("path")];
+    bridge[id] = { g, strokes: ps.slice(0, 4), arrow: ps[4] };
+  }
+  const dot = (p) => { const g = svgEl("g", {}); svgEl("circle", { cx: p[0], cy: p[1], r: 9, fill: T.rgba(T.inUse, 0.28) }, g);
+    svgEl("circle", { cx: p[0], cy: p[1], r: 4.2, fill: T.rgb(T.app), stroke: T.inUse, "stroke-width": 1.6 }, g); return g; };
+  const dots = { G: dot(RT.G), DB: dot(RT.DB), F: dot(RT.F) };
+  // one file inside its container: a single mark, ringed
+  const fileG = svgEl("g", {});
+  const fileRing = svgEl("circle", { cx: RT.FILE[0], cy: RT.FILE[1], r: 8.5, fill: "none", stroke: T.inUse, "stroke-width": 1.6 }, fileG);
+  const fileMark = svgEl("rect", { x: RT.FILE[0] - 3, y: RT.FILE[1] - 3, width: 6, height: 6, fill: T.inUse }, fileG);
+  const pings = [0, 1].map(() => svgEl("circle", { cx: RT.FILE[0], cy: RT.FILE[1], r: 4, fill: "none", stroke: T.key, "stroke-width": 2.4 }));
+
+  // ---- overlays of the method at scale
+  const connCv = connCanvas(h), filesCv = filesCanvas(h);
+  if (connCv.__n !== TRUTH.connections_onprem.used) throw new Error("s09: counts do not match truth");
+  const validFiles = TRUTH.qvd_files.by_usage.find((u) => u.key === "valid").files;
+  if (filesCv.__n !== validFiles) throw new Error(`s09: lit files ${filesCv.__n} != ${validFiles}`);
+  // S08's end, carried over: its lit list (overlay over the veil) and its count block in place of the island's name
+  const ov = s08List(h);
+  if (ov.__n !== TRUTH.connections_onprem.used) throw new Error("s09: S08's list is not 89");
+  const cblock = $("#cblock");
+  $("#cnt").textContent = String(TRUTH.connections_onprem.used);
+  $("#cbof").textContent = ` of ${TRUTH.connections_onprem.total} in use`;
+  { const cb = R.bb(W.conn.poly), cTL = scr([cb[0], cb[3]], R.camera("diary"));   // = s08.html: under the island's west coast
+    gsap.set(cblock, { x: Math.round(cTL[0] + 6), y: Math.round(cTL[1] + 14) }); }
+  gsap.set(lbl("connections"), { autoAlpha: 0 });
+
+  await R.freeze([lveil, papers.gen, papers.fe, connCv, filesCv, ...ov.__cvs]);
+
+  // ---- chips: names that leave the lines and become the route's labels (screen space, constant size)
+  const chip = (html, cls = "w-label w-route") => { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; $("#chips").appendChild(d); return d; };
+  const Q = { contQ: chip('<span class="w-dim">· a project folder</span>'), fileQ: chip('<span class="w-dim">one file ·</span>'),
+    feQ: chip('<span class="w-dim">· front end</span>') };
+  const C = Object.assign({
+    gen: chip("Generator app"), db: chip("SALES_DB"), cont: chip("SalesContainer"), file: chip("sales_orders.qvd"), fe: chip("Sales YoY"),
+  }, Q);
+  const wOf = (el) => el.offsetWidth, hOf = (el) => el.offsetHeight;
+  const G = scr(RT.G), F = scr(RT.F), DB = scr(RT.DB), FL = scr(RT.FILE);
+  const scB = R.bb(SC.poly), scR = ROUTE.x + ROUTE.scale * scB[2], scBot = ROUTE.y + ROUTE.scale * scB[3];
+  const SP = 6;                                                           // the space between a name and its qualifier
+  const TG = {
+    gen: [G[0] - 16 - wOf(C.gen), G[1] - 12 - hOf(C.gen)],
+    db: [DB[0] - wOf(C.db) / 2, DB[1] + 16],
+    file: [scR - wOf(C.file), scBot + 14],
+    cont: [scR - wOf(C.contQ) - SP - wOf(C.cont), scBot + 14 + hOf(C.file) + 8],
+    fe: [F[0] + 16, F[1] - 12 - hOf(C.fe)],
+  };
+  const place = (el, xy) => gsap.set(el, { x: xy[0], y: xy[1] });
+  place(C.fileQ, [TG.file[0] - SP - wOf(C.fileQ), TG.file[1]]);
+  place(C.contQ, [scR - wOf(C.contQ), TG.cont[1]]);
+  place(C.feQ, [TG.fe[0] + wOf(C.fe) + SP, TG.fe[1]]);
+
+  // ---- the count labels of the method at scale (camera full: world = screen). "587 products" stands beside the
+  // generators -> front ends bridge (its east end), "2,773 files" on the sea above the land: one shared left edge
+  const count = (html, at, ax, ay) => { const d = document.createElement("div"); d.className = "w-label"; d.dataset.plate = "1"; d.innerHTML = html; $("#counts").appendChild(d);
+    gsap.set(d, { x: Math.round(at[0] - ax * d.offsetWidth), y: Math.round(at[1] - ay * d.offsetHeight) }); return d; };
+  const connAt = lbl("connections").__L.at, GF = W.bridges.gf, CX = Math.round(GF.b[0] + 26);
+  const N = {
+    conn: count(`<b>Data connections</b><span class="w-dim"> · </span><span class="num">${TRUTH.connections_onprem.used}</span><span class="w-dim"> in use</span>`, connAt, 0.5, 0.5),
+    lane: count(`<span class="num">${TRUTH.apps.multi_app.products}</span> products<span class="w-dim"> · generators joined to their front ends</span>`, [CX, GF.b[1]], 0, 0.5),
+    files: count(`<span class="num">${validFiles.toLocaleString("en-GB")}</span> files<span class="w-dim"> used by apps people use</span>`, [CX, 724], 0, 0.5),
+  };
+
+  // ---- MATCH: the talk's one Living Typography word, slammed over the route, then collapsed onto the file
+  const M = $("#match"), MW = M.offsetWidth, MH = M.offsetHeight;
+  const MC = [1386, 540];
+  gsap.set(M, { x: MC[0] - MW / 2, y: MC[1] - MH / 2 });
+
+  /* ---------------------------------------------------------------- s0: = S08's end */
+  // the front end's diary is off stage until s2: it waits laid out as it arrives (LOAD's note open)
+  const s0 = { gen: LY.s0.gen, fe: LY.s2.fe };
+  for (const id of ["gen", "fe"]) S[id].rows.forEach((r, i) => gsap.set(r.el, { y: s0[id].ys[i] }));
+  gsap.set(S.gen.el, { y: TOP }); gsap.set(S.gen.paper, { height: s0.gen.h }); gsap.set(S.fe.paper, { height: LY.s2.fe.h });
+  gsap.set(S.fe.el, { y: 1120, autoAlpha: 0 });
+  for (const sh of Object.values(S)) for (const r of sh.rows) if (r.key) {
+    gsap.set(r.band, { scaleX: 0, backgroundColor: r.key === "let" ? COL.greyTint : COL.useTint });
+    gsap.set(r.note, { autoAlpha: 0, color: r.key === "let" ? COL.grey : COL.use });
+    for (const nm of Object.values(r.names)) gsap.set(nm.querySelector("i"), { backgroundColor: COL.red });
+  }
+  const dbR = rowOf(S.gen, "db");
+  gsap.set(dbR.band, { scaleX: 1, backgroundColor: COL.redTint });
+  gsap.set([dbR.no, dbR.note], { color: COL.red }); gsap.set(dbR.note, { autoAlpha: 1 }); gsap.set(dbR.tx, { color: COL.ink });
+  // the sheets' own ground waits for s1: S08 ends on the open sea, with no ground under its sheet
+  const lveilImg = R.fz(lveil);
+  gsap.set(lveilImg, { autoAlpha: 0 });
+  gsap.set(routeG, { autoAlpha: 0 });
+  for (const b of Object.values(bridge)) { gsap.set(b.strokes, { drawSVG: "0% 0%" }); gsap.set(b.arrow, { autoAlpha: 0 }); }
+  gsap.set([...Object.values(dots), cont, fileG], { autoAlpha: 0 });
+  gsap.set(pings, { autoAlpha: 0 });
+  gsap.set(Object.values(C), { autoAlpha: 0 });
+  // S06's dashes turn solid one by one at s5: the bridged layer's pieces start hidden and undrawn (the layer itself
+  // is off until then, as in "S06-end")
+  const BG = {}, BP = {}, ND = {};
+  for (const id of ["land", "conn", "gf"]) {
+    BG[id] = h.layers.bridged.querySelector(`[data-bridge="light:${id}"]`);
+    BP[id] = [...BG[id].querySelectorAll("path")];
+    ND[id] = h.layers.needed.querySelector(`[data-bridge="needed:${id}"]`);
+    if (!BG[id] || !ND[id]) throw new Error(`s09: world bridge ${id} not found`);
+  }
+  const bridgedPort = h.layers.bridged.querySelector("[data-port]");
+  gsap.set(Object.values(BG), { autoAlpha: 0 });
+  gsap.set(Object.values(BP).flat(), { drawSVG: "0% 0%" });
+  gsap.set(bridgedPort, { autoAlpha: 0 });
+
+  // ---- the measurements s4 needs, taken at s4's compact layout (no notes), then back to s0
+  const at4 = () => { for (const id of ["gen", "fe"]) S[id].rows.forEach((r, i) => gsap.set(r.el, { y: LY.s4[id].ys[i] })); gsap.set(S.fe.el, { y: feTop("s4") }); };
+  const back0 = () => { for (const id of ["gen", "fe"]) S[id].rows.forEach((r, i) => gsap.set(r.el, { y: s0[id].ys[i] })); gsap.set(S.fe.el, { y: 1120 }); };
+  at4();
+  const rectOf = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect(); };
+  const srcBox = {
+    gen: rectOf(S.gen.title), fe: rectOf(S.fe.title), db: rectOf(dbR.names.db.firstChild),
+    cont: rectOf(rowOf(S.gen, "store").names.cont.firstChild), file: rectOf(rowOf(S.gen, "store").names.file.firstChild),
+  };
+  const ulS = rowOf(S.gen, "store").names.file.getBoundingClientRect(), ulL = rowOf(S.fe, "load").names.file.getBoundingClientRect();
+  const endS = rectOf(rowOf(S.gen, "store").tx).right, endL = rectOf(rowOf(S.fe, "load").tx).right;   // where each line ends
+  back0();
+  // a chip starts registered on its source glyphs (scaled to their size), then travels to its label's place
+  const srcPx = { gen: 28, fe: 28, db: 24, cont: 24, file: 24 };
+  const startOf = (key) => { const b = srcBox[key], el = C[key], k = srcPx[key] / 26;
+    return { x: b.left, y: b.top + b.height / 2 - (hOf(el) * k) / 2, scale: k }; };
+  // the two red rules: each underline flows on under the rest of its line (just below the glyphs, never through
+  // them), leaves the line past its end and sweeps to the file inside SalesContainer. c1, c2: the sweep's pulls
+  const fx = $("#fx"), f1 = (v) => v.toFixed(1);
+  const rule = (u, end, c1, c2) => {
+    const a = [u.right, u.bottom - 2.5], y = a[1] + 6, x0 = Math.max(end + 14, a[0] + 30), e = document.createElementNS(NS, "path");
+    e.setAttribute("d", `M${f1(a[0])},${f1(a[1])} Q${f1(a[0] + 9)},${f1(y)} ${f1(a[0] + 20)},${f1(y)} L${f1(x0)},${f1(y)}`
+      + ` C${f1(x0 + c1[0])},${f1(y + c1[1])} ${f1(FL[0] + c2[0])},${f1(FL[1] + c2[1])} ${f1(FL[0])},${f1(FL[1])}`);
+    e.setAttribute("fill", "none"); e.setAttribute("stroke", T.key); e.setAttribute("stroke-width", "3"); e.setAttribute("stroke-linecap", "round");
+    e.setAttribute("stroke-linejoin", "round");
+    fx.appendChild(e); return e; };
+  // the store line (upper sheet) falls to the file passing under the generator; the load line (lower sheet) rises
+  // over SALES_DB and its label before it lands
+  const rules = [rule(ulS, endS, [160, 40], [-280, -40]), rule(ulL, endL, [220, -60], [-300, -60])];
+  gsap.set(rules, { drawSVG: "0% 0%", autoAlpha: 0 });
+
+  /* ---------------------------------------------------------------- timeline */
+  const tl = gsap.timeline({ paused: true, defaults: { ease: E.rise } });
+  tl.addLabel("s0", 0);
+  const sheetTo = (id, from, to, t, dur = 0.6) => {
+    S[id].rows.forEach((r, i) => { if (Math.abs(LY[from][id].ys[i] - LY[to][id].ys[i]) > 0.1) tl.to(r.el, { y: LY[to][id].ys[i], duration: dur, ease: E.lens }, t); });
+    if (Math.abs(LY[from][id].h - LY[to][id].h) > 0.1) tl.to(S[id].paper, { height: LY[to][id].h, duration: dur, ease: E.lens }, t);
+  };
+  const openLens = (r, t, col) => {
+    tl.fromTo(r.band, { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: E.mark, immediateRender: false }, t + 0.15);
+    tl.to(r.tx, { color: COL.ink, duration: 0.3, ease: E.light }, t + 0.1);
+    tl.to(r.no, { color: col, duration: 0.3, ease: E.light }, t + 0.1);
+    tl.fromTo(r.note, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5, immediateRender: false }, t + 0.35);
+  };
+
+  // ---- s1: STORE · saved a file. The clue cools from the red of S08 to the colour of a relationship
+  let t = 0.05;
+  tl.to(lveilImg, { autoAlpha: 1, duration: 0.8, ease: E.light }, t);
+  tl.to(dbR.band, { backgroundColor: COL.useTint, duration: 0.6, ease: E.light }, t);
+  tl.to([dbR.no, dbR.note], { color: COL.use, duration: 0.6, ease: E.light }, t);
+  sheetTo("gen", "s0", "s1", t);
+  openLens(rowOf(S.gen, "store"), t + 0.1, COL.use);
+  tl.addLabel("s1", 1.0);
+
+  // ---- s2: LOAD · read a file. The front end's diary slides in under the generator's
+  t = 1.05;
+  tl.set(S.fe.el, { autoAlpha: 1 }, t);
+  tl.to(S.fe.el, { y: feTop("s2"), duration: 1.0, ease: E.slide }, t);
+  openLens(rowOf(S.fe, "load"), t + 0.55, COL.use);
+  tl.addLabel("s2", t + 1.3);
+
+  // ---- s3: LET · declared: holds PII data, in both diaries (an attribute of each app, not a link)
+  t = t + 1.35;
+  sheetTo("gen", "s2", "s3", t);
+  tl.to(S.fe.el, { y: feTop("s3"), duration: 0.6, ease: E.lens }, t);
+  sheetTo("fe", "s2", "s3", t);
+  openLens(rowOf(S.gen, "let"), t + 0.1, COL.grey);
+  openLens(rowOf(S.fe, "let"), t + 0.1, COL.grey);
+  tl.addLabel("s3", t + 1.05);
+
+  // ---- s4: the lines go onto the map (continuous)
+  const T4 = t + 1.1;
+  const allRows = [...S.gen.rows, ...S.fe.rows];
+  const keep = [dbR, rowOf(S.gen, "store"), rowOf(S.fe, "load")];
+  // the sheets step back: only the three lines that name the route keep their light
+  tl.to(allRows.filter((r) => r.key).map((r) => r.note), { autoAlpha: 0, duration: 0.3 }, T4);
+  sheetTo("gen", "s3", "s4", T4 + 0.15, 0.7);
+  sheetTo("fe", "s3", "s4", T4 + 0.15, 0.7);
+  tl.to(S.fe.el, { y: feTop("s4"), duration: 0.7, ease: E.lens }, T4 + 0.15);
+  tl.to(allRows.filter((r) => !keep.includes(r)).map((r) => r.el), { opacity: 0.3, duration: 0.5, ease: E.light }, T4);
+  // the camera opens the map beside the sheets; the dim veil lifts; S06's dashes and the second port leave
+  // back at the start (a seek back from s4/s5), the labels return to diary's exact anchors: h.sync reads the world's
+  // transform back as floats and left them 0.1 px off the forward frame
+  tl.to(h.world, { ...ROUTE, duration: 1.6, ease: E.dolly, onUpdate: h.sync, onReverseComplete: () => h.place("diary") }, T4);
+  // S08's list leaves as the camera does (it rides the same move while it fades); its count block with it
+  tl.to(ov, { ...ROUTE, duration: 1.6, ease: E.dolly }, T4);
+  tl.to([ov, cblock], { autoAlpha: 0, duration: 0.5, ease: E.light }, T4);
+  tl.to(h.veil, { autoAlpha: 0, duration: 1.2, ease: E.light }, T4 + 0.2);
+  tl.to([h.layers.needed, h.layers.owners], { autoAlpha: 0, duration: 0.5, ease: E.light }, T4);
+  tl.to(atDiary.filter((id) => !atRoute.includes(id)).map(lbl), { autoAlpha: 0, duration: 0.3 }, T4);
+  tl.set(routeG, { autoAlpha: 1 }, T4 + 1.4);
+
+  // a name leaves its line: a copy lifts off the glyphs and travels to its place on the map; the glyphs it left
+  // dim as it lifts (the name leaving the line, not a second copy of it) and come back once it has landed
+  const srcEl = { gen: S.gen.title, fe: S.fe.title, db: dbR.names.db, cont: rowOf(S.gen, "store").names.cont, file: rowOf(S.gen, "store").names.file };
+  // over: a height the flight first rises to (the front end's name flies over "Generator app", which sits on its row)
+  const fly = (key, t0, dur, over = null) => {
+    const s = startOf(key), el = C[key];
+    // every property in both vars: a property only in the from vars is not re-applied after a seek back and forth
+    tl.fromTo(el, { x: s.x, y: s.y, scale: s.scale, autoAlpha: 0 }, { x: s.x, y: s.y - 8, scale: s.scale, autoAlpha: 1, duration: 0.3, ease: E.lift, immediateRender: false }, t0);
+    tl.to(el, { x: TG[key][0], duration: dur, ease: E.travel }, t0 + 0.3);   // after the lift: no two tweens share a property
+    if (over === null) tl.to(el, { y: TG[key][1], duration: dur, ease: E.arc }, t0 + 0.3);
+    else {
+      tl.to(el, { y: over, duration: dur * 0.6, ease: "power2.out" }, t0 + 0.3);
+      tl.to(el, { y: TG[key][1], duration: dur * 0.4, ease: "power2.inOut" }, t0 + 0.3 + dur * 0.6);
+    }
+    tl.to(el, { scale: 1, duration: dur, ease: E.travel }, t0 + 0.3);
+    tl.fromTo(srcEl[key], { opacity: 1 }, { opacity: 0.35, duration: 0.2, ease: E.light, immediateRender: false }, t0);
+    tl.fromTo(srcEl[key], { opacity: 0.35 }, { opacity: 1, duration: 0.5, ease: E.light, immediateRender: false }, t0 + 0.3 + dur);
+  };
+  const draw = (id, t0, dur) => {
+    tl.to(bridge[id].strokes, { drawSVG: "0% 100%", duration: dur, ease: E.beam }, t0);
+    tl.to(bridge[id].arrow, { autoAlpha: 1, duration: 0.3, ease: E.light }, t0 + dur * 0.7);
+  };
+  const kindle = (g, t0) => tl.fromTo(g, { autoAlpha: 0, scale: 0.2, transformOrigin: "50% 50%" }, { autoAlpha: 1, scale: 1, transformOrigin: "50% 50%", duration: 0.5, ease: E.kindle, immediateRender: false }, t0);
+
+  // 1.3  LIB CONNECT: the generator, then SALES_DB (the flights overlap: each starts before the last has landed)
+  let u = T4 + 1.3;
+  fly("gen", u, 0.85);
+  kindle(dots.G, u + 0.9);
+  fly("db", u + 0.2, 0.85);
+  draw("db", u + 0.45, 0.85);
+  kindle(dots.DB, u + 1.25);
+  // 2.3  STORE: the generator saved this one file, in this container (a project folder)
+  u = T4 + 2.3;
+  fly("cont", u, 0.95);
+  fly("file", u + 0.1, 0.95);
+  draw("store", u + 0.15, 1.05);
+  tl.to(cont, { autoAlpha: 1, duration: 0.5, ease: E.light }, u + 0.9);
+  kindle(fileG, u + 1.15);
+  tl.to([C.fileQ, C.contQ], { autoAlpha: 1, duration: 0.45, ease: E.light }, u + 1.35);
+  // 3.35  LOAD: the front end reads the same file
+  u = T4 + 3.35;
+  fly("fe", u, 0.9, TG.gen[1] - 72);
+  draw("load", u + 0.1, 0.95);
+  kindle(dots.F, u + 1.0);
+  tl.to(C.feQ, { autoAlpha: 1, duration: 0.4, ease: E.light }, u + 1.15);
+  // 4.6  the key moment: the same name in both diaries, underlined red; two red rules converge on the file; MATCH
+  u = T4 + 4.6;
+  const ulEls = [rowOf(S.gen, "store").names.file.querySelector("i"), rowOf(S.fe, "load").names.file.querySelector("i")];
+  tl.to(ulEls[0], { scaleX: 1, duration: 0.35, ease: E.mark }, u);
+  tl.to(ulEls[1], { scaleX: 1, duration: 0.35, ease: E.mark }, u + 0.15);
+  tl.set(rules, { autoAlpha: 1 }, u + 0.4);
+  tl.to(rules, { drawSVG: "0% 100%", duration: 0.6, ease: "power2.in" }, u + 0.4);
+  const MT = u + 1.0;                                                     // the rules reach the file: the slam
+  tl.to(h.veil, { autoAlpha: 0.5, duration: 0.15, ease: "power2.out" }, MT - 0.05);
+  tl.fromTo(M, { scale: 1.45, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.2, ease: "power4.in", immediateRender: false }, MT);
+  tl.to(M, { scale: 1.025, duration: 0.08, ease: "power2.out" }, MT + 0.2);
+  tl.to(M, { scale: 1, duration: 0.25, ease: "power2.inOut" }, MT + 0.28);
+  tl.fromTo(fileMark, { attr: { fill: T.rgb(T.inUse) } }, { attr: { fill: T.rgb(T.key) }, duration: 0.1, immediateRender: false }, MT);
+  pings.forEach((p, i) => tl.fromTo(p, { attr: { r: 4 }, autoAlpha: 1, strokeWidth: 2.6 }, { attr: { r: 38 + i * 16 }, autoAlpha: 0, strokeWidth: 0.6, duration: 0.95 + i * 0.2, ease: "power2.out", immediateRender: false }, MT + 0.05 + i * 0.12));
+  // nothing else red in that frame: the rules go as the word lands, the underlines cool after it
+  tl.to(rules, { autoAlpha: 0, duration: 0.18, ease: E.light }, MT);
+  tl.to(ulEls, { backgroundColor: COL.useLine, duration: 0.18, ease: E.light }, MT);
+  // it holds (about 1.2 s at full size: through Teams at a low frame rate it must last more than a few frames),
+  // then collapses onto the file
+  const MX = gsap.getProperty(M, "x"), MY = gsap.getProperty(M, "y"), HOLD = 1.2;
+  tl.to(M, { x: FL[0] - MW / 2, y: FL[1] - MH / 2, scale: 0.04, duration: 0.55, ease: "power3.in" }, MT + HOLD);
+  tl.to(M, { autoAlpha: 0, duration: 0.12, ease: "none" }, MT + HOLD + 0.45);
+  tl.to(h.veil, { autoAlpha: 0, duration: 0.5, ease: E.light }, MT + HOLD + 0.15);
+  tl.to(fileMark, { attr: { fill: T.rgb(T.inUse) }, duration: 0.6, ease: E.light }, MT + HOLD + 0.6);
+  // so the generator and the front end belong together: the bridge over the "?", which goes when it lands
+  u = MT + HOLD + 0.35;                                                  // as it collapses
+  draw("gf", u, 0.9);
+  tl.to(h.q, { autoAlpha: 0, duration: 0.4, ease: E.light }, u + 0.8);
+  tl.addLabel("s4", u + 1.35);
+
+  // ---- s5: the method at scale (continuous). The diaries are put away, the camera goes to full, S06's dashed
+  // links come back and turn solid one by one (Data connections, the land, the "?" last), each lighting what it
+  // found: 89 connections in use, 2,773 used files, 587 products. The world rests in exactly "S09-end"
+  const T5 = u + 1.4;
+  tl.to(Object.values(S).map((s) => s.el), { x: -1060, duration: 0.75, ease: E.drop, stagger: 0.05 }, T5);
+  tl.set(Object.values(S).map((s) => s.el), { autoAlpha: 0 }, T5 + 0.85);
+  // the sheets' ground goes with them, before the camera is under way (fewer full-frame layers change mid-dolly)
+  tl.to(lveilImg, { autoAlpha: 0, duration: 0.5, ease: E.light }, T5 + 0.2);
+  tl.to(Object.values(C), { autoAlpha: 0, duration: 0.25, ease: E.light }, T5);
+  tl.to(routeG, { autoAlpha: 0, duration: 0.45, ease: E.light }, T5);
+  // the headline keeps a ground of its own while the map passes under it (gone once it rests on open sea)
+  const tplate = $("#tplate"), tr = document.createRange();
+  tr.selectNodeContents($(".scene-title")); gsap.set(tplate, { width: Math.round(tr.getBoundingClientRect().width + 20) });
+  tl.to(tplate, { autoAlpha: 1, duration: 0.3, ease: E.light }, T5 + 0.1);
+  // the camera: the four Auditor islands keep their names through the move (h.sync re-anchors them every frame);
+  // the rest of the city's names come back as it settles
+  const DOL = T5 + 0.5;
+  tl.to(h.world, { ...R.camera("full"), duration: 1.45, ease: E.dolly, onUpdate: h.sync }, DOL);
+  tl.to(tplate, { autoAlpha: 0, duration: 0.4, ease: E.light }, DOL + 1.1);
+  // the Apps pair take their names back from the route's chips as the move starts, and ride it too
+  const pair = ["generators", "frontends"];
+  tl.to(pair.map(lbl), { autoAlpha: 1, duration: 0.4, ease: E.light }, DOL);
+  tl.to([...atDiary.filter((id) => id !== "connections" && !atRoute.includes(id) && !pair.includes(id)).map(lbl), ...terr],
+    { autoAlpha: 1, duration: 0.5, stagger: 0.03 }, DOL + 1.1);
+  tl.to(h.layers.owners, { autoAlpha: 1, duration: 0.5, ease: E.light }, DOL + 1.4);
+  // S06's dashes return (the second port with them, still dashed), then each one is drawn solid
+  tl.to(h.layers.needed, { autoAlpha: 1, duration: 0.45, ease: E.light }, DOL + 1.0);
+  const turn = (id, t0, dur) => {
+    tl.set(BG[id], { autoAlpha: 1 }, t0);
+    tl.to(BP[id], { drawSVG: "0% 100%", duration: dur, ease: E.beam }, t0);
+    tl.to(ND[id], { autoAlpha: 0, duration: 0.25, ease: E.light }, t0 + dur * 0.6);
+  };
+  const B0 = DOL + 1.55;
+  tl.set(h.layers.bridged, { autoAlpha: 1 }, B0);
+  // Data connections -> its 89 in use
+  turn("conn", B0, 0.5);
+  tl.to(R.fz(connCv), { autoAlpha: 1, duration: 0.6, ease: E.light }, B0 + 0.3);
+  tl.to(N.conn, { autoAlpha: 1, duration: 0.45 }, B0 + 0.45);
+  // the land -> the second port is built; its 2,773 used files
+  turn("land", B0 + 0.55, 0.5);
+  tl.to(bridgedPort, { autoAlpha: 1, duration: 0.35, ease: E.light }, B0 + 0.9);
+  tl.to(h.ports.missing, { autoAlpha: 0, duration: 0.35, ease: E.light }, B0 + 0.9);
+  tl.to(R.fz(filesCv), { autoAlpha: 1, duration: 0.6, ease: E.light }, B0 + 0.85);
+  tl.set(lbl("containers"), { attr: { "data-plate": "1" } }, B0 + 0.85);   // over lit cells now: its plate on day
+  tl.to(N.files, { autoAlpha: 1, duration: 0.45 }, B0 + 1.0);
+  // the "?" last: generators joined to their front ends, 587 products
+  turn("gf", B0 + 1.15, 0.45);
+  tl.to(N.lane, { autoAlpha: 1, duration: 0.45 }, B0 + 1.45);
+  tl.to(h.layers.needed, { autoAlpha: 0, duration: 0.1, ease: "none" }, B0 + 1.65);   // = "S09-end": needed out
+  tl.to("#foot", { autoAlpha: 1, duration: 0.5 }, B0 + 1.6);
+  tl.addLabel("s5", B0 + 2.2);
+
+  window.__s09 = { h, S, C, N, TG, ov, cblock, M: { MW, MH, MX, MY }, ulS, ulL, rules, MT, T4, T5 };
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5"]);
+})();
+</script>
+</body>
+</html>

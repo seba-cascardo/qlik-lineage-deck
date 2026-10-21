@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presentador · Qlik Lineage</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<script src="shared/world/theme.js"></script>
+<style>
+  /* The window's height is the page's: long notes shrink (see fitNotes) and, past that, scroll in their column, so
+     the footer never goes below the window (1280x800, the size the player opens it at). */
+  body {
+    margin: 0; height: 100vh; overflow: hidden; background: #1C1E20; color: #F2F3F3;
+    font-family: "Vodafone", system-ui, sans-serif;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  [hidden] { display: none !important; }
+  header {
+    display: flex; align-items: baseline; column-gap: 32px; row-gap: 10px; flex-wrap: wrap;
+    padding: 18px 28px; border-bottom: 1px solid #3A3D40;
+  }
+  .clock { font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .plan { font-size: 22px; color: #B5BABC; }
+  .delta { font-size: 22px; font-weight: 700; }
+  .delta.late { color: #FFB84D; }
+  .delta.early { color: #6FD3E0; }
+  .theme { font-size: 18px; color: #B5BABC; padding: 2px 10px; border: 1px solid #3A3D40; border-radius: 999px; }
+  .now { margin-left: auto; font-size: 22px; color: #B5BABC; font-variant-numeric: tabular-nums; }
+  main {
+    display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: minmax(0, 1fr);
+    gap: 28px; padding: 24px 28px; min-height: 0;
+  }
+  main > section, main > aside { min-height: 0; overflow-y: auto; }
+  .scene-id { font-size: 18px; color: #B5BABC; letter-spacing: .04em; }
+  h1 { font-size: 34px; margin: 4px 0 6px; }
+  .step { font-size: 20px; color: #B5BABC; margin-bottom: 18px; }
+  .step b { color: #fff; }
+  .seq { display: inline-block; margin-left: 10px; padding: 2px 10px; border-radius: 999px; font-size: 16px; background: #E60000; color: #fff; }
+  .seq.paused { background: #EB9700; color: #1C1E20; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  /* --k: the notes' scale, 1 (25 px) down to 0.64 (16 px) when they would not fit (fitNotes) */
+  #notes { --k: 1; }
+  #notes li {
+    font-size: calc(25px * var(--k)); line-height: 1.35; border-left: 3px solid #E60000;
+    padding: calc(10px * var(--k)) 0 calc(10px * var(--k)) 18px; margin-bottom: calc(10px * var(--k));
+  }
+  #notes li.os { font-weight: 700; border-left-color: #6FD3E0; }
+  /* a stage direction (how to say it, not what to say): dimmed, smaller, in italics, so it is never read out */
+  #notes li .dir { color: #9DA2A5; font-size: calc(22px * var(--k)); font-style: italic; font-weight: 400; }
+  /* P: the fps meter (the player sends it about twice a second while it is on). Pass and fail in theme.js's night
+     tokens (--fps-pass, --fps-fail, set by the script): this window is dark on both themes. */
+  .fps-line { flex-basis: 100%; font-size: 20px; color: #B5BABC; font-variant-numeric: tabular-nums; }
+  .fps-line b { font-size: 26px; color: #F2F3F3; }
+  .fps-line b.pass { color: var(--fps-pass); }
+  .fps-line b.fail { color: var(--fps-fail); }
+  .fps-line #fpsLast { color: #F2F3F3; }
+  .pill { display: inline-block; margin-left: 8px; padding: 1px 10px; border-radius: 999px; font-size: 15px; font-weight: 700; line-height: 1.35; }
+  .pill.pass { background: var(--fps-pass); color: var(--fps-on-pass); }
+  .pill.fail { background: var(--fps-fail); color: var(--fps-on-fail); }
+  body.meter-on .preview { width: 70%; }   /* room for the list at 1280x800 */
+  .fps-box { margin-top: 14px; }
+  .fps-title { font-size: 16px; color: #B5BABC; margin-bottom: 6px; }
+  #fpsLog { margin: 0; padding: 0; list-style: none; font-size: 15px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+  #fpsLog li { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; white-space: nowrap; }
+  #fpsLog .n { color: #8C9194; min-width: 1.8em; text-align: right; }
+  #fpsLog .pill { margin-left: 0; min-width: 4.4em; text-align: center; font-size: 13px; }
+  .next-label { font-size: 18px; color: #B5BABC; margin-bottom: 8px; }
+  .next-title { font-size: 22px; margin-bottom: 12px; }
+  .preview { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; overflow: hidden; }
+  .preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; visibility: hidden; }
+  .preview .none { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-size: 18px; color: #8C9194; }
+  .black-on { margin-top: 14px; font-size: 18px; color: #FFB84D; display: none; }
+  footer { padding: 12px 28px; font-size: 15px; color: #8C9194; border-top: 1px solid #3A3D40; }
+</style>
+</head>
+<body>
+<header>
+  <div class="clock" id="elapsed">00:00</div>
+  <div class="plan" id="plan">plan —</div>
+  <div class="delta" id="delta"></div>
+  <div class="theme" id="theme">—</div>
+  <div class="now" id="now"></div>
+  <div class="fps-line" id="fpsLine" hidden>Medidor (P) · <b id="fpsLive">—</b> fps ahora · última secuencia: <span id="fpsLast">todavía ninguna</span></div>
+</header>
+<main>
+  <section>
+    <div class="scene-id" id="sceneId">—</div>
+    <h1 id="title">Esperando al reproductor…</h1>
+    <div class="step" id="step"></div>
+    <ul id="notes"></ul>
+  </section>
+  <aside>
+    <div class="next-label">Siguiente</div>
+    <div class="next-title" id="nextTitle">—</div>
+    <div class="preview" id="preview"><img id="nextImg" alt="siguiente escena"><div class="none" id="noPreview">sin vista previa</div></div>
+    <div class="black-on" id="blackOn">Pantalla en negro (B para volver)</div>
+    <div class="fps-box" id="fpsBox" hidden>
+      <div class="fps-title">Últimas secuencias · meta: 50 fps o más y p95 de 25 ms o menos</div>
+      <ol id="fpsLog"></ol>
+    </div>
+  </aside>
+</main>
+<footer>Estas teclas funcionan también en esta ventana: → siguiente · ← anterior · espacio pausa la secuencia · B pantalla negra · T reinicia el reloj · el reloj arranca con el primer clic · P medidor de fps (para la prueba de Teams) · L cambia de tema (night/day) y recarga las dos ventanas (para pruebas)</footer>
+
+<script src="shared/deck.js"></script>
+<script src="shared/notes.js"></script>
+<script>
+/*
+ * Presenter window: notes, timer and the next scene. Every key goes back to the player, except L.
+ * The next scene is a still (deck/thumbs/<id>.png on night, deck/thumbs/<theme>/<id>.png on any other theme), not a
+ * live page: a live heavy scene here would compete with the player for the same thread.
+ * P (forwarded to the player like any key) turns the fps meter on and off; while it is on the player sends
+ * {type:"fps", on, live, log, gate, theme} about twice a second and this window shows the live reading and the last
+ * sequence in the header (#fpsLine) and the last 10 sequences under the preview (#fpsLog). This window is not shared
+ * on Teams, so the meter does not show to the audience.
+ * Query: ?theme= and ?manifest= as the player passes them (see index.html).
+ */
+(function () {
+  const Q = new URLSearchParams(location.search);
+  const THEMES = window.DECK_THEMES || ["night", "day"];
+  const theme = THEMES.includes(Q.get("theme")) ? Q.get("theme") : (window.DECK_THEME || "night");
+  const manifest = Q.get("manifest");
+  if (manifest && /^(?:\.\.\/)*(?:[\w-]+\/)*[\w.-]+\.js$/.test(manifest)) {
+    const s = document.createElement("script");
+    s.src = manifest;
+    s.onload = () => start(theme);
+    s.onerror = () => console.error("presenter: manifest not found: " + manifest);
+    document.head.appendChild(s);
+  } else start(theme);
+
+  function start(theme) {
+    const D = window.DECK, N = window.DECK_NOTES || {};
+    const $ = (id) => document.getElementById(id);
+    let state = null;
+    let shownIdx = null;
+    let shownNext;
+    let synced = false;
+
+    const toSec = (mss) => { const [m, s] = mss.split(":").map(Number); return m * 60 + s; };
+    const fmt = (sec) => { const a = Math.abs(Math.round(sec)); return String(Math.floor(a / 60)).padStart(2, "0") + ":" + String(a % 60).padStart(2, "0"); };
+    const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const thumb = (id) => (theme === "night" ? `thumbs/${id}.png` : `thumbs/${theme}/${id}.png`);
+    // a note of shared/notes.js: a spoken line ("ON SCREEN:" in bold), or an array of spoken strings and
+    // { dir } stage directions, which are shown dimmed
+    const noteHtml = (t) => {
+      if (Array.isArray(t)) {
+        return "<li>" + t.map((x) => (x && typeof x === "object" ? `<span class="dir">${esc(String(x.dir))}</span>` : esc(String(x)))).join(" ") + "</li>";
+      }
+      return t.startsWith("ON SCREEN:") ? `<li class="os">${esc(t.slice(10).trim())}</li>` : `<li>${esc(t)}</li>`;
+    };
+
+    $("theme").textContent = "tema: " + theme;
+    const NIGHT = window.THEMES && window.THEMES.night;   // this window is dark on both themes
+    if (NIGHT) {
+      for (const [k, v] of [["--fps-pass", NIGHT.inUse], ["--fps-fail", NIGHT.key], ["--fps-on-pass", NIGHT.stage],
+                            ["--fps-on-fail", NIGHT.ink]]) document.documentElement.style.setProperty(k, v);
+    }
+
+    // Long notes shrink, down to 16 px (--k 0.64), instead of pushing the footer below a 1280x800 window; past that
+    // their column scrolls. Run when the notes, the window or the header (the meter's line) change.
+    function fitNotes() {
+      const ul = $("notes"), sec = ul.parentElement;
+      let k = 1;
+      ul.style.setProperty("--k", "1");
+      while (sec.scrollHeight > sec.clientHeight + 1 && k > 0.645) {
+        k = Math.max(0.64, k - 0.04);
+        ul.style.setProperty("--k", k.toFixed(2));
+      }
+    }
+    window.addEventListener("resize", fitNotes);
+    document.fonts.ready.then(fitNotes);   // the Vodafone font is wider than the fallback
+
+    // P: the fps meter, from the player
+    let meterOn = false, shownLog = null;
+    const secs = (ms) => (ms / 1000).toFixed(1).replace(".", ",");
+    const seqText = (q) => `${String(q.id).toUpperCase()} paso ${q.step} · ${secs(q.ms)} s · ${q.fps} fps · p95 ${q.p95} ms`;
+    const pill = (ok) => {
+      const p = document.createElement("span");
+      p.className = "pill " + (ok ? "pass" : "fail");
+      p.textContent = ok ? "OK" : "FALLA";
+      return p;
+    };
+    function renderFps(d) {
+      const on = !!d.on;
+      if (on !== meterOn) {
+        meterOn = on;
+        document.body.classList.toggle("meter-on", on);
+        $("fpsLine").hidden = !on;
+        $("fpsBox").hidden = !on;
+        fitNotes();
+      }
+      if (!on) return;
+      const gate = d.gate || { fps: 50, p95: 25 };
+      const live = $("fpsLive");
+      const has = typeof d.live === "number";
+      live.textContent = has ? String(d.live) : "—";
+      live.className = has ? (d.live >= gate.fps ? "pass" : "fail") : "";
+      const log = Array.isArray(d.log) ? d.log : [];
+      const q = log[log.length - 1];
+      const key = q ? q.n : 0;
+      if (key === shownLog) return;
+      shownLog = key;
+      const last = $("fpsLast");
+      if (!q) last.textContent = "todavía ninguna";
+      else last.replaceChildren(document.createTextNode(seqText(q)), pill(q.ok));
+      $("fpsLog").replaceChildren(...log.map((x) => {
+        const li = document.createElement("li");
+        Object.assign(li.dataset, { id: x.id, step: x.step, ms: x.ms, fps: x.fps, p95: x.p95, ok: x.ok ? "1" : "0" });
+        const n = document.createElement("span");
+        n.className = "n";
+        n.textContent = String(x.n);
+        li.append(n, " ", pill(x.ok), " ", seqText(x));
+        return li;
+      }));
+    }
+
+    const img = $("nextImg");
+    img.addEventListener("load", () => { $("noPreview").style.display = "none"; img.style.visibility = "visible"; });
+    img.addEventListener("error", () => { $("noPreview").style.display = "flex"; img.style.visibility = "hidden"; });
+
+    function render() {
+      if (!state) return;
+      const s = D[state.idx];
+      const sc = state.scene || {};
+      $("sceneId").textContent = `${s.id.toUpperCase()} · ${state.idx + 1} de ${D.length}`;
+      $("title").textContent = s.title;
+      let step = sc.steps ? `paso <b>${sc.step}</b> de ${sc.steps}` : "sin pasos";
+      if (sc.running) step += sc.paused ? '<span class="seq paused">secuencia en pausa</span>' : '<span class="seq">secuencia corriendo</span>';
+      $("step").innerHTML = step;
+      if (shownIdx !== state.idx) {
+        shownIdx = state.idx;
+        $("notes").innerHTML = (N[s.id] || []).map(noteHtml).join("");
+        fitNotes();
+      }
+      $("plan").textContent = "plan " + s.plan;
+      $("blackOn").style.display = state.black ? "block" : "none";
+      const nx = D[state.idx + 1];
+      $("nextTitle").textContent = nx ? `${nx.id.toUpperCase()} · ${nx.title}` : "Fin";
+      const want = nx ? thumb(nx.id) : null;
+      $("preview").style.display = nx ? "" : "none";
+      if (want !== shownNext) {
+        shownNext = want;
+        if (want) img.src = want;
+        else { img.removeAttribute("src"); img.style.visibility = "hidden"; $("noPreview").style.display = "none"; }
+      }
+    }
+
+    function tick() {
+      $("now").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      if (!state || state.startedAt === null) { $("elapsed").textContent = "00:00"; $("delta").textContent = ""; return; }
+      const el = (Date.now() - state.startedAt) / 1000;
+      $("elapsed").textContent = fmt(el);
+      const d = el - toSec(D[state.idx].plan);
+      $("delta").textContent = (d >= 0 ? "+" : "−") + fmt(d);
+      $("delta").className = "delta " + (d > 30 ? "late" : d < -30 ? "early" : "");
+    }
+
+    // L: the other theme, for both windows (the player reloads itself on the same scene)
+    function switchTheme() {
+      const other = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+      if (window.opener && !window.opener.closed) window.opener.postMessage({ deck: true, type: "theme", theme: other }, "*");
+      const q = new URLSearchParams(location.search);
+      q.set("theme", other);
+      location.replace("?" + q.toString());
+    }
+
+    // Until the player answers (it may be reloading too), say hello again.
+    function hello() {
+      if (synced || !window.opener || window.opener.closed) return;
+      window.opener.postMessage({ deck: true, type: "hello" }, "*");
+      setTimeout(hello, 400);
+    }
+
+    // Only a sync on this window's theme counts. After L, the first hello can reach the player's old document
+    // before it reloads: it answers with the old theme, then goes away, and the reloaded player would never hear
+    // from this window again. So a sync on another theme is ignored and the hello goes on until the player
+    // reloaded on this theme answers (qa/test_player.py theme_key_L_old_player_answers).
+    window.addEventListener("message", (e) => {
+      const d = e.data;
+      if (!d || !d.deck || d.theme !== theme) return;
+      if (d.type === "fps") { renderFps(d); return; }
+      if (d.type !== "sync") return;
+      synced = true; state = d; render(); tick();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "F5") { e.preventDefault(); return; }
+      if (e.key === "l" || e.key === "L") { e.preventDefault(); switchTheme(); return; }
+      if (window.opener) window.opener.postMessage({ deck: true, type: "key", key: e.key }, "*");
+      if (e.key.startsWith("Arrow") || e.key.startsWith("Page") || e.key === " ") e.preventDefault();
+    });
+
+    setInterval(tick, 500);
+    hello();
+  }
+})();
+</script>
+</body>
+</html>

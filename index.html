@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qlik Lineage</title>
+<script src="shared/world/theme.js"></script>
+<style>
+  /* --letterbox: the theme's stage colour, set below, so a window that is not 16:9 shows no black bars around a
+     white slide on day; B's black screen (#black) stays black */
+  html, body { margin: 0; height: 100%; background: var(--letterbox, #000); overflow: hidden; }
+  #stage {
+    position: absolute; left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: 50% 50%;
+  }
+  #stage iframe {
+    position: absolute; inset: 0;
+    width: 1920px; height: 1080px;
+    border: 0; background: transparent;
+    opacity: 0; transition: opacity .45s ease;
+    pointer-events: none;
+  }
+  #stage iframe.on { opacity: 1; pointer-events: auto; }
+  #stage iframe.instant { transition: none; }
+  #black { position: fixed; inset: 0; background: #000; display: none; z-index: 5; }
+  #help {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    padding: 10px 18px; border-radius: 8px; z-index: 6;
+    background: rgba(37, 40, 43, .92); color: #fff;
+    font: 15px/1.4 system-ui, sans-serif; white-space: nowrap;
+    transition: opacity .6s ease;
+  }
+  #help.gone { opacity: 0; pointer-events: none; }
+  /* P: the fps meter, here only while no presenter window is open (this window is the one shared on Teams: fine
+     during a test). Pass and fail come from theme.js's night tokens (--fps-pass, --fps-fail, set below): the plate
+     is dark on both themes. */
+  #fps {
+    position: fixed; right: 16px; top: 16px; z-index: 7;
+    padding: 8px 14px; border-radius: 8px;
+    background: rgba(37, 40, 43, .92); color: #fff;
+    font: 15px/1.4 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+  }
+  #fps[hidden] { display: none; }
+  #fps b { font-size: 20px; }
+  #fps .live.pass { color: var(--fps-pass); }
+  #fps .live.fail { color: var(--fps-fail); }
+  #fps .pill { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+  #fps .pill.pass { background: var(--fps-pass); color: var(--fps-on-pass); }
+  #fps .pill.fail { background: var(--fps-fail); color: var(--fps-on-fail); }
+  #fps .dim { color: #B5BABC; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <iframe id="fa" title="scene"></iframe>
+  <iframe id="fb" title="scene"></iframe>
+  <iframe id="fc" title="scene"></iframe>
+</div>
+<div id="black"></div>
+<div id="fps" hidden><b class="live" id="fpsLive">—</b> fps <span class="dim">·</span> <span id="fpsLast" class="dim">sin secuencias medidas todavía</span></div>
+<div id="help" hidden></div><!-- no key help on screen (Seba 2026-10-21: "ya sé cómo moverme"); the keys are in LEEME.txt and the presenter -->
+
+<script src="shared/deck.js"></script>
+<script>
+/*
+ * Player: shows one scene at a time, forwards clicks as steps, and keeps the presenter window in sync.
+ *
+ * Preload (Review Focus 1): besides the scene on screen, the next scene waits in a hidden frame, already "ready",
+ * so the change at a scene's last step is a cross-fade, not a load. Frames of file:// pages share one thread, so a
+ * heavy scene being prepared freezes the one on screen for as long as it takes (about 1.5 s for the world at 4x
+ * CPU): a click in that time waits, and two clicks would run back to back and skip a sequence. So the preload
+ * starts only once the scene on screen rests at its LAST step, PRELOAD_AFTER_MS after it got there (a quick <- to
+ * replay the last step cancels it). There nothing moves, and the only click that matters is the one that crosses
+ * to the next scene, which waits for the preload either way. A scene with one label is at its last step as soon
+ * as it arrives.
+ * Going back (<- at s0) loads the previous scene with ?at=end; the scene left at s0 is kept as the preload, so ->
+ * again is immediate.
+ * Keys during a change between neighbours: the same direction finishes it, the other direction undoes it.
+ * - A -> during the cross-fade forward only finishes the fade (like a second click during a sequence): it never
+ *   plays the new scene's first step.
+ * - A <- during the cross-fade from the previous scene (a premature ->) dissolves back to it: it is still loaded
+ *   underneath, at its last step, and the scene that was coming in goes back to being the preload. Mirror: a ->
+ *   during the cross-fade back to the previous scene (a premature <- at s0) dissolves back to the scene left at s0.
+ * - Before the fade, while the scene asked for is still loading, a key the other way cancels the change: -> at the
+ *   last step then <- leaves the scene at its last step (the next one goes on loading as the preload); <- at s0
+ *   then -> leaves it at s0, its first step not played.
+ *
+ * Query: ?theme=night|day (default DECK_THEME) is passed to every scene and to the presenter, and sets the colour
+ *        of the letterbox (THEMES[theme].stage from shared/world/theme.js);
+ *        ?manifest=<relative .js> loads another scene list instead of shared/deck.js (qa/test_player.py fixtures).
+ * P: the fps meter, for the Teams test on the 57" monitor (deck/LEEME.txt). Off, nothing of it runs, here or in the
+ * scenes. On, the scene on screen measures its own frames (scene-runtime.js, cmd "fps"; the player moves the meter
+ * along when the scene changes) and reports about every 500 ms; the player names each continuous sequence after its
+ * scene, judges it against the plan's gates (>= 50 fps average, p95 <= 25 ms) and shows it in the presenter window,
+ * or, while no presenter window is open, in the badge #fps (on the shared window: fine during a test).
+ * window.__player.state() reports what the player holds, for qa/test_player.py.
+ */
+(function () {
+  const Q = new URLSearchParams(location.search);
+  const THEMES = window.DECK_THEMES || ["night", "day"];
+  const theme = THEMES.includes(Q.get("theme")) ? Q.get("theme") : (window.DECK_THEME || "night");
+  // the letterbox follows the theme the scenes get (theme.js on this page reads only ?theme=, not DECK_THEME)
+  const T = window.THEMES && Object.hasOwn(window.THEMES, theme) ? window.THEMES[theme] : null;
+  if (T) document.documentElement.style.setProperty("--letterbox", T.stage);
+  const manifest = Q.get("manifest");
+  if (manifest && /^(?:\.\.\/)*(?:[\w-]+\/)*[\w.-]+\.js$/.test(manifest)) {
+    const s = document.createElement("script");
+    s.src = manifest;
+    s.onload = () => start(theme, manifest);
+    s.onerror = () => console.error("player: manifest not found: " + manifest);
+    document.head.appendChild(s);
+  } else {
+    if (manifest) console.error("player: manifest must be a relative path to a .js file: " + manifest);
+    start(theme, null);
+  }
+
+  function start(theme, manifest) {
+    const D = window.DECK;
+    const FADE_MS = 450;           // = the opacity transition above
+    const PRELOAD_AFTER_MS = 600;  // after the scene on screen comes to rest at its last step (and the fade has ended)
+    const stage = document.getElementById("stage");
+    const black = document.getElementById("black");
+    const help = document.getElementById("help");
+    const frames = Array.from(stage.querySelectorAll("iframe"));
+    const states = {};             // last "state" message of each frame, by frame id
+    let cur = null;                // { el, idx }: the scene on screen
+    let pre = null;                // { el, idx, ready }: the next scene, hidden, at s0
+    let pending = null;            // { el, idx }: a scene loading, shown as soon as it is ready
+    let retiring = null;           // { el, idx, step, steps, running }: the scene the new one dissolves over
+    let leaving = null;            // a frame fading out on top of the scene on screen (a cross-fade undone by <-)
+    let fading = false, fadeTimer = null, preloadTimer = null;
+    let idx = 0;
+    let scene = { step: 0, steps: 0, running: false, paused: false };
+    let presenter = null;
+    let startedAt = null;
+    let z = 1;
+    const GATE = { fps: 50, p95: 25 };   // per continuous sequence, as qa/capture.py measures them (the plan's gates)
+    const fpsBox = document.getElementById("fps");
+    const sceneOf = {};                  // frame id -> index of the scene loaded in it, to name a meter report
+    const meter = { on: false, el: null, live: null, log: [], n: 0 };   // el: the frame measuring
+    const NIGHT = window.THEMES && window.THEMES.night;   // the meter's plate is dark on both themes
+    if (NIGHT) {
+      for (const [k, v] of [["--fps-pass", NIGHT.inUse], ["--fps-fail", NIGHT.key], ["--fps-on-pass", NIGHT.stage],
+                            ["--fps-on-fail", NIGHT.ink]]) document.documentElement.style.setProperty(k, v);
+    }
+
+    function fit() {
+      const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+    }
+
+    function sceneUrl(i, at) {
+      const q = new URLSearchParams();
+      if (at === "end") q.set("at", "end");
+      q.set("theme", theme);
+      return D[i].file + "?" + q.toString();
+    }
+
+    function frameOf(win) { return frames.find((f) => f.contentWindow === win) || null; }
+
+    function open(el, i, at) { delete states[el.id]; sceneOf[el.id] = i; el.src = sceneUrl(i, at); }
+
+    function blank(el) { delete states[el.id]; delete sceneOf[el.id]; el.src = "about:blank"; }
+
+    function free() {
+      const busy = [cur && cur.el, pre && pre.el, pending && pending.el, retiring && retiring.el, leaving && leaving.el];
+      let f = frames.find((x) => !busy.includes(x));
+      if (!f && pre) { f = pre.el; pre = null; }   // an urgent load takes the preload's frame
+      return f;
+    }
+
+    // Show scene i (at its end with at = "end"); the preloaded frame when it holds i. dir is "next" or "prev" when
+    // the scene on screen asked for the change at its edge (an arrow key), so a key the other way can cancel it.
+    function go(i, at, dir) {
+      if (i < 0 || i >= D.length) return;
+      if (pending && pending.idx === i) return;      // already on its way (a second click at the edge)
+      clearTimeout(preloadTimer);
+      if (pre && pre.idx === i && at !== "end") {
+        const p = pre;
+        pre = null;
+        if (pending) { blank(pending.el); pending = null; }
+        if (p.ready) swapIn(p.el, i);
+        else pending = { el: p.el, idx: i, dir };
+        return;
+      }
+      if (pending) { blank(pending.el); pending = null; }
+      const el = free();
+      pending = { el, idx: i, dir };
+      open(el, i, at);
+    }
+
+    // A key against the direction of a scene change that is still loading cancels it. The scene on screen asked for
+    // the change resting at its last step (->) or at s0 (<-), and nothing was sent to it since, so it stays as it
+    // was. The next scene, loading at s0, goes on loading as the preload; the previous one, loading at its end, is
+    // dropped.
+    function cancelPending() {
+      const p = pending;
+      pending = null;
+      if (p.dir === "next" && p.idx === idx + 1) {
+        if (pre && pre.el !== p.el) blank(pre.el);
+        pre = { el: p.el, idx: p.idx, ready: false };   // its "ready" marks it ready (onReady)
+      } else blank(p.el);
+      schedulePreload();
+      sync();
+    }
+
+    // The new scene fades in over the old one, which stays opaque underneath: a true dissolve.
+    function swapIn(el, i) {
+      finishFade(true);
+      pending = null;
+      if (cur) retiring = { el: cur.el, idx: cur.idx, step: scene.step, steps: scene.steps, running: scene.running };
+      el.classList.remove("instant");
+      void el.offsetWidth;                            // start the transition from opacity 0
+      el.style.zIndex = String(++z);
+      el.classList.add("on");
+      cur = { el, idx: i };
+      idx = i;
+      meterFollow();
+      scene = states[el.id] || { step: 0, steps: 0, running: false, paused: false };
+      history.replaceState(null, "", "#" + D[i].id);
+      fading = true;
+      fadeTimer = setTimeout(() => finishFade(false), FADE_MS + 50);
+      window.focus();
+      sync();
+    }
+
+    function finishFade(instant) {
+      if (!fading) return;
+      clearTimeout(fadeTimer);
+      fading = false;
+      if (instant) cur.el.classList.add("instant");
+      if (leaving) {
+        leaving.el.classList.add("instant");
+        if (leaving.drop) blank(leaving.el);
+        leaving = null;
+      }
+      const r = retiring;
+      retiring = null;
+      if (r) {
+        r.el.classList.add("instant");
+        r.el.classList.remove("on");
+        // back across a boundary: the scene left at s0 is the next one of the scene now shown
+        if (r.idx === idx + 1 && r.step === 0 && !r.running) {
+          if (pre && pre.el !== r.el) blank(pre.el);
+          pre = { el: r.el, idx: r.idx, ready: true };
+        } else blank(r.el);
+      }
+      schedulePreload();
+    }
+
+    // A key against the direction of a cross-fade between neighbours dissolves back to the scene left, still loaded
+    // underneath where it was: <- (back = true) during the fade from the previous scene, left at its last step;
+    // -> during the fade from the next scene, left at s0. The scene that was coming in fades back out on top: the
+    // next scene goes back to being the preload, the previous one (at its end) is dropped.
+    function undoFade(back) {
+      const r = retiring;
+      if (!fading || !r || r.running) return false;
+      if (back ? (r.idx !== idx - 1 || r.step < r.steps) : (r.idx !== idx + 1 || r.step !== 0)) return false;
+      clearTimeout(fadeTimer);
+      retiring = null;
+      const gone = cur;
+      if (back) {
+        if (pre && pre.el !== gone.el) blank(pre.el);
+        pre = { el: gone.el, idx: gone.idx, ready: true };   // it was shown, so it is ready, and it rests at s0
+      }
+      gone.el.classList.remove("instant");
+      gone.el.classList.remove("on");                      // fades back out from where it is, on top
+      leaving = { el: gone.el, drop: !back };
+      cur = { el: r.el, idx: r.idx };                      // still opaque underneath
+      idx = r.idx;
+      meterFollow();
+      scene = states[r.el.id] || { step: r.step, steps: r.steps, running: false, paused: false };
+      history.replaceState(null, "", "#" + D[idx].id);
+      fadeTimer = setTimeout(() => finishFade(false), FADE_MS + 50);
+      sync();
+      return true;
+    }
+
+    function atLastStep() { return !scene.running && scene.step >= scene.steps; }
+
+    // Called when a fade ends and on every "state" of the scene on screen: (re)starts the wait for the preload when
+    // the scene rests at its last step, cancels it otherwise.
+    function schedulePreload() {
+      clearTimeout(preloadTimer);
+      const want = idx + 1;
+      if (want >= D.length || (pre && pre.idx === want) || !atLastStep()) return;
+      preloadTimer = setTimeout(() => {
+        if (want !== idx + 1 || fading || pending || !atLastStep()) return;   // the next "state" or fade reschedules
+        if (pre && pre.idx === want) return;
+        if (pre) { blank(pre.el); pre = null; }
+        const el = free();
+        if (!el) return;
+        pre = { el, idx: want, ready: false };
+        open(el, want);
+      }, PRELOAD_AFTER_MS);
+    }
+
+    // A scene says "ready" once it is drawn and its fonts are in.
+    function onReady(el) {
+      if (!el) return;
+      if (pending && el === pending.el) swapIn(el, pending.idx);
+      else if (pre && el === pre.el) pre.ready = true;
+    }
+
+    function send(cmd) {
+      if (cur && cur.el.contentWindow) cur.el.contentWindow.postMessage({ deck: true, type: "cmd", cmd }, "*");
+    }
+
+    function sync() {
+      if (presenter && !presenter.closed) {
+        presenter.postMessage({ deck: true, type: "sync", idx, scene, startedAt, theme, black: black.style.display === "block" }, "*");
+      }
+    }
+
+    // ---- P: the fps meter (see the header)
+    function meterSend(el, on) {
+      if (el && el.contentWindow) el.contentWindow.postMessage({ deck: true, type: "cmd", cmd: "fps", on }, "*");
+    }
+
+    // The frame that measures is the scene on screen: called on every change of cur, and on P.
+    function meterFollow() {
+      const want = meter.on && cur ? cur.el : null;
+      if (want === meter.el) return;
+      if (meter.el) meterSend(meter.el, false);
+      meter.el = want;
+      if (want) meterSend(want, true);
+    }
+
+    function toggleMeter() {
+      meter.on = !meter.on;
+      meter.live = null;
+      meterFollow();
+      meterShow();
+    }
+
+    // A report of a scene: name its sequences after the scene loaded in that frame, judge them against the gates.
+    function onFps(el, d) {
+      const i = sceneOf[el.id];
+      const id = i !== undefined && D[i] ? D[i].id : "?";
+      for (const q of Array.isArray(d.seqs) ? d.seqs : []) {
+        meter.log.push({ n: ++meter.n, id, step: q.step, steps: q.steps, ms: q.ms, frames: q.frames, fps: q.fps,
+                         p95: q.p95, ok: q.fps >= GATE.fps && q.p95 <= GATE.p95 });
+      }
+      if (meter.log.length > 50) meter.log.splice(0, meter.log.length - 50);
+      if (el === meter.el && typeof d.live === "number") meter.live = d.live;
+      meterShow();
+    }
+
+    const secs = (ms) => (ms / 1000).toFixed(1).replace(".", ",");
+
+    // To the presenter window when one is open, else to the badge (checked on every report, about every 500 ms
+    // while the meter is on, so closing the presenter brings the badge back).
+    function meterShow() {
+      const pres = !!presenter && !presenter.closed;
+      if (pres) {
+        presenter.postMessage({ deck: true, type: "fps", on: meter.on, live: meter.live, log: meter.log.slice(-10),
+                                gate: GATE, theme }, "*");
+      }
+      fpsBox.hidden = !meter.on || pres;
+      if (fpsBox.hidden) return;
+      const live = document.getElementById("fpsLive");
+      live.textContent = meter.live === null ? "—" : String(meter.live);
+      live.className = "live" + (meter.live === null ? "" : meter.live >= GATE.fps ? " pass" : " fail");
+      const box = document.getElementById("fpsLast");
+      const q = meter.log[meter.log.length - 1];
+      if (!q) { box.className = "dim"; box.textContent = "sin secuencias medidas todavía"; return; }
+      box.className = "";
+      Object.assign(box.dataset, { id: q.id, step: q.step, ms: q.ms, fps: q.fps, p95: q.p95, ok: q.ok ? "1" : "0" });
+      box.textContent = `${q.id.toUpperCase()} paso ${q.step} · ${secs(q.ms)} s · ${q.fps} fps · p95 ${q.p95} ms`;
+      const pill = document.createElement("span");
+      pill.className = "pill " + (q.ok ? "pass" : "fail");
+      pill.textContent = q.ok ? "OK" : "FALLA";
+      box.appendChild(pill);
+    }
+
+    function presenterUrl() {
+      const q = new URLSearchParams();
+      q.set("theme", theme);
+      if (manifest) q.set("manifest", manifest);
+      return "presenter.html?" + q.toString();
+    }
+
+    function openPresenter() {
+      if (presenter && !presenter.closed) { presenter.focus(); return; }
+      presenter = window.open(presenterUrl(), "qlik-presenter", "width=1280,height=800");
+      if (meter.on) meterShow();   // the badge goes; the presenter gets the meter when it says hello
+    }
+
+    // L in the presenter: reload this window with the other theme, on the same scene (the presenter reloads itself).
+    function switchTheme(t) {
+      const q = new URLSearchParams(location.search);
+      q.set("theme", t);
+      location.replace("?" + q.toString() + "#" + D[idx].id);
+    }
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => {});
+    }
+
+    function key(k) {
+      if (["ArrowRight", "PageDown", "ArrowDown", "Enter"].includes(k)) {
+        if (startedAt === null) startedAt = Date.now();
+        if (pending && pending.dir === "prev") cancelPending();   // <- at s0 by mistake: stay
+        else if (fading) { if (!undoFade(false)) finishFade(true); }   // else a click during the fade only finishes it
+        else send("next");
+      } else if (["ArrowLeft", "PageUp", "ArrowUp", "Backspace"].includes(k)) {
+        if (pending && pending.dir === "next") cancelPending();   // -> at the last step by mistake: stay
+        else if (!undoFade(true)) { finishFade(true); send("prev"); }
+      }
+      else if (k === " " || k === "Spacebar") send("toggle");
+      else if (k === "n" || k === "N") openPresenter();
+      else if (k === "f" || k === "F") toggleFullscreen();
+      else if (k === "b" || k === "B" || k === ".") { black.style.display = black.style.display === "block" ? "none" : "block"; sync(); }
+      else if (k === "t" || k === "T") { startedAt = Date.now(); sync(); }
+      else if (k === "p" || k === "P") toggleMeter();
+      else if (k === "Home") go(0);
+      else if (k === "End") go(D.length - 1, "end");
+      else return false;
+      help.classList.add("gone");
+      return true;
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "F5") { e.preventDefault(); return; }   // clicker "start" buttons send F5: don't reload
+      if (key(e.key)) e.preventDefault();
+    });
+
+    window.addEventListener("message", (e) => {
+      const d = e.data;
+      if (!d || !d.deck) return;
+      const el = frameOf(e.source);
+      if (d.type === "ready") onReady(el);
+      else if (d.type === "state" && el) {
+        states[el.id] = d;
+        if (cur && el === cur.el) {
+          scene = d;
+          if (!pending && !fading) schedulePreload();
+          sync();
+        }
+      } else if (d.type === "edge" && cur && el === cur.el) {
+        if (d.dir === "next") go(idx + 1, undefined, "next");
+        else go(idx - 1, "end", "prev");
+      } else if (d.type === "key") key(d.key);
+      else if (d.type === "fps" && el) onFps(el, d);
+      else if (d.type === "hello" && !el) { presenter = e.source; sync(); if (meter.on) meterShow(); }
+      else if (d.type === "theme" && !el && THEMES.includes(d.theme) && d.theme !== theme) switchTheme(d.theme);
+    });
+
+    window.__player = {
+      state() {
+        return {
+          idx, id: cur ? D[cur.idx].id : null, frame: cur ? cur.el.id : null, url: cur ? cur.el.src : null,
+          fading, pending: pending ? pending.idx : null,
+          preload: pre ? { idx: pre.idx, ready: pre.ready, url: pre.el.src } : null,
+          scene: { step: scene.step, steps: scene.steps, running: !!scene.running }, theme,
+          fps: { on: meter.on, frame: meter.el ? meter.el.id : null, live: meter.live, seqs: meter.log.length }
+        };
+      }
+    };
+
+    window.addEventListener("resize", fit);
+    fit();
+    setTimeout(() => help.classList.add("gone"), 6000);
+
+    const fromHash = D.findIndex((s) => "#" + s.id === location.hash);
+    go(fromHash >= 0 ? fromHash : 0);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S19 · End frame</title>
+<!--
+  S19 End frame (Task 12 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S19).
+  The Living Speechmark (brand checklist: Vodafone Red, >= 40 % of the frame height, as close to the centre as
+  possible, never bleeding, clear zone kept) between "Together we can" and "Questions?".
+  "Living element must reflect the environment it is placed in": here the environment is the talk's own
+  language, the dots and lines S17-S18 reduced the map to.
+    s0  the speechmark drawn as a red network of dots and lines; "Together we can" on its left, as in the
+        official horizontal lock-up (strapline left of the mark)
+    s1  (continuous, 2.7 s) the lines swell from the tail tip down into the bowl until the network is the
+        solid speechmark; "Questions?" opens on its right, the words the speechmark (an opening quote) opens
+  The speechmark is the official shape, traced from deck/shared/logo/VF_Icon_RGB_WHITE.png by
+  deck/scenes/s19_build.py into s19_data.js (window.S19), never redrawn by hand.
+  Colours only from the CSS variables of deck/shared/world/theme.js (qa/lint_colors.py).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<script src="../shared/world/theme.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  /* the mark: 620 px tall (57 % of the frame), its box centred on the frame */
+  #mark { position: absolute; left: 728px; top: 230px; width: 464px; height: 620px; overflow: visible; }
+  #mark .net line, #mark .net path { fill: none; stroke: var(--key); stroke-linecap: round; stroke-linejoin: round; }
+  #mark .net circle { fill: var(--key); stroke: none; }
+  #mark .swell path { fill: none; stroke: var(--key); stroke-linecap: round; stroke-linejoin: round; }
+  #mark .fill { fill: var(--key); }
+  .say { position: absolute; margin: 0; font-size: 64px; line-height: 76px; white-space: nowrap; color: var(--ink); }
+  /* "Together we can": Regular, the weight of the official strapline; right edge 104 px from the mark's box */
+  #together { right: 1296px; top: 563px; font-weight: 400; text-align: right; }
+  /* "Questions?": Bold; left edge 104 px from the mark's box, on the same line as the strapline */
+  #questions { left: 1296px; top: 563px; font-weight: 700; }
+</style>
+</head>
+<body class="scene">
+  <p class="say" id="together">Together we can</p>
+  <svg id="mark" viewBox="0 0 748.8 1000" aria-label="Vodafone speechmark">
+    <defs><clipPath id="clipMark"><path id="clipPath"/></clipPath></defs>
+    <g class="net" id="net"></g>
+    <g class="swell" id="swell" clip-path="url(#clipMark)"></g>
+    <path class="fill" id="fill" opacity="0"/>
+  </svg>
+  <p class="say" id="questions">Questions?</p>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="s19_data.js"></script>
+<script>
+(function () {
+  const D = window.S19;
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+  const K = 620 / D.h;                 // px per unit
+  const LINE = 3.4 / K;                // the outline at s0: 3.4 px
+  const INNER = 2.4 / K;               // the lines inside it: 2.4 px, a step back
+  const SWELL_LINE = 190, SWELL_DOT = 230;   // units the swell reaches: the union covers the shape
+
+  document.getElementById("clipPath").setAttribute("d", D.path);
+  const fill = document.getElementById("fill");
+  fill.setAttribute("d", D.path);
+  const isOutline = (u, v) => u < D.nc && v < D.nc && (Math.abs(u - v) === 1 || Math.abs(u - v) === D.nc - 1);
+
+  // per band: the s0 network (unclipped: the outline dots sit on the edge) and its swelling copy (clipped)
+  const net = document.getElementById("net"), swell = document.getElementById("swell");
+  const bands = [];
+  for (let b = 0; b < D.nb; b++) {
+    const g = el("g", {}, net);
+    const outline = [], inner = [], dots = [];
+    D.edges.forEach(([u, v], i) => {
+      if (D.edgeBand[i] !== b) return;
+      const [x1, y1] = D.nodes[u], [x2, y2] = D.nodes[v];
+      (isOutline(u, v) ? outline : inner).push(`M${x1} ${y1}L${x2} ${y2}`);
+    });
+    if (inner.length) el("path", { d: inner.join(""), "stroke-width": INNER, opacity: 0.8 }, g);
+    if (outline.length) el("path", { d: outline.join(""), "stroke-width": LINE }, g);
+    D.nodes.forEach(([x, y, r], i) => {
+      if (D.nodeBand[i] !== b) return;
+      el("circle", { cx: x, cy: y, r: r }, g);
+      dots.push(`M${x} ${y}h0`);
+    });
+    const se = el("path", { d: outline.concat(inner).join("") || "M0 0", "stroke-width": 0 }, swell);
+    const sd = el("path", { d: dots.join("") || "M0 0", "stroke-width": 0 }, swell);
+    bands.push({ g, se, sd });
+  }
+
+  const questions = document.getElementById("questions");
+  gsap.set(questions, { opacity: 0, x: -28 });
+
+  const tl = gsap.timeline({ paused: true }).addLabel("s0");
+  // s0 -> s1: the lines swell band by band from the tail tip into the bowl
+  const T0 = 0.15, STEP = 0.085, DUR = 1.15;
+  bands.forEach(({ g, se, sd }, b) => {
+    const t = T0 + b * STEP;
+    tl.fromTo(se, { attr: { "stroke-width": INNER } }, { attr: { "stroke-width": SWELL_LINE }, duration: DUR, ease: "sine.in" }, t);
+    tl.fromTo(sd, { attr: { "stroke-width": 0 } }, { attr: { "stroke-width": SWELL_DOT }, duration: DUR, ease: "sine.in" }, t);
+    tl.to(g, { opacity: 0, duration: 0.45, ease: "none" }, t + 0.3);
+  });
+  const tEnd = T0 + (D.nb - 1) * STEP + DUR;            // the last band is fully swollen
+  tl.to(fill, { attr: { opacity: 1 }, duration: 0.5, ease: "power1.in" }, tEnd - 0.55);
+  // CSS visibility, not the attribute: a set of a missing attribute does not revert when the timeline seeks back
+  tl.set([swell, net], { visibility: "hidden" }, tEnd);
+  tl.to(questions, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, tEnd - 0.2);
+  tl.addLabel("s1", tEnd + 0.5);                       // = the end of the last tween: s1 is the timeline's end
+
+  const icon = document.createElement("img");
+  icon.className = "vf-icon";
+  icon.alt = "Vodafone";
+  icon.src = THEME.icon;
+  document.body.appendChild(icon);
+  // the icon is decoded before the scene says it is ready, so the thumbnail and the player's first frame have it
+  icon.decode().catch(() => {}).then(() => Scene.init(tl, ["s0", "s1"]));
+})();
+</script>
+</body>
+</html>

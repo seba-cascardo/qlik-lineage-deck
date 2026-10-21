@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S12 · Is it still used? Connections and containers</title>
+<!--
+  S12 (Task 10 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S12; world spec §4: parcels, not beacons).
+  Numbers from foundation/truth.json: connections_onprem {total 203, unused_3_plus_months 114, feed_only_unused_apps
+  22, serve_apps_in_use 67}, containers_onprem_unused 37. Which parcel is which is illustrative (seeded), the counts
+  are real; the 37 containers are WORLD.land's own `dormant` flags (all On-prem).
+    s0  S11's end: camera land, the city in "S09-end" (owners hidden at zoom > 1) under S11's veil (0.72) except
+        the land (and the connections island, off frame here), the territory names
+    s1  dolly land -> conn; the 203 connection parcels light up in a wave from their bridge
+        ("On-prem Production · 203 data connections · one parcel each", the 203 counting up)
+    s2  114 go dark, west to east: "114 · unused 3+ months"
+    s3  22 lose their light and are outlined --review: "22 · feed only apps nobody opens"
+    s4  67 turn --in-use and glow: "67 · serve apps in use"; then "Only 67 of 203 are candidates to migrate"
+    s5  on the land, the 37 dormant On-prem containers outlined --review: "37 · On-prem containers with no activity"
+  End = camera conn (the contract's S12 cam), so S13 (conn -> apps) starts where this ends.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  /* clear ground for the headline block: the lit Apps pair fills the top of the frame at land and at conn */
+  /* (a canvas with a +-1 dither, frozen: a CSS gradient this dark bands on the GPU) */
+  #headband { position: absolute; left: 0; top: 0; width: 1920px; height: 340px; pointer-events: none; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -4px; color: var(--ink); }   /* ink from y 54, x 96 (-4: the I's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .txt { position: absolute; font-family: "Vodafone", system-ui, sans-serif; white-space: nowrap;
+    -webkit-font-smoothing: antialiased; font-variant-numeric: lining-nums tabular-nums; }
+  #sub { left: 96px; top: 138px; font-size: 30px; line-height: 38px; font-weight: 400; color: var(--ink-dim); }
+  #sub b { color: var(--ink); font-weight: 700; }
+  #answer { left: 96px; top: 194px; font-size: 44px; line-height: 52px; font-weight: 500; color: var(--ink); }
+  #answer b { color: var(--in-use); font-weight: 700; }
+  /* the ledger under the island, one entry per state, each with the parcel it names */
+  #ledger { left: 96px; top: 828px; display: flex; gap: 80px; }
+  .led { position: relative; }
+  #led-cont { position: absolute; right: 184px; top: 828px; }   /* its widest line ends where the note does */
+  .led .row { display: flex; align-items: center; gap: 16px; height: 56px; }
+  .led .num { font-size: 56px; line-height: 56px; font-weight: 700; color: var(--ink); }
+  .led .cap { font-size: 28px; line-height: 34px; font-weight: 400; color: var(--ink-dim); margin-top: 8px; }
+  .led svg { display: block; flex: none; overflow: visible; }
+  .g-dark { fill: color-mix(in srgb, var(--ink-faint) 14%, var(--stage)); stroke: color-mix(in srgb, var(--ink-faint) 40%, var(--stage)); stroke-width: 2; }
+  .g-review { fill: none; stroke: var(--review); stroke-width: 3.5; stroke-linejoin: round; }
+  .g-use { fill: var(--in-use); }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <canvas id="headband" width="1920" height="340"></canvas>
+  <h1 class="scene-title">Is it still used? Connections and containers</h1>
+  <div id="sub" class="txt">On-prem Production · <b id="n203">203</b> data connections · one parcel each</div>
+  <div id="answer" class="txt">Only <b>67</b> of 203 are candidates to migrate</div>
+  <div id="ledger" class="txt">
+    <div class="led" id="led-dark">
+      <div class="row"><svg width="34" height="30" viewBox="0 0 34 30"><path class="g-dark" d="M2,4 L31,2 L32,27 L3,28 Z"/></svg><span class="num" data-n="114">114</span></div>
+      <div class="cap">unused 3+ months</div>
+    </div>
+    <div class="led" id="led-review">
+      <div class="row"><svg width="34" height="30" viewBox="0 0 34 30"><path class="g-review" d="M3,4 L31,3 L31,27 L4,27 Z"/></svg><span class="num" data-n="22">22</span></div>
+      <div class="cap">feed only apps nobody opens</div>
+    </div>
+    <div class="led" id="led-use">
+      <div class="row"><svg width="34" height="30" viewBox="0 0 34 30"><path class="g-use" d="M2,4 L31,2 L32,27 L3,28 Z"/></svg><span class="num" data-n="67">67</span></div>
+      <div class="cap">serve apps in use</div>
+    </div>
+  </div>
+  <div class="led txt" id="led-cont">
+    <div class="row"><svg width="34" height="30" viewBox="0 0 34 30"><path class="g-review" d="M3,3 L31,5 L30,27 L3,26 Z"/></svg><span class="num" data-n="37">37</span></div>
+    <div class="cap">On-prem containers<br>with no activity</div>
+  </div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, TR = window.TRUTH;
+const NS = "http://www.w3.org/2000/svg";
+document.querySelector("#icon").src = T.icon;
+
+// the counts, from truth.json (asserted: a changed truth.json must not leave this scene showing old numbers)
+const C = { total: 203, dark: 114, review: 22, use: 67, cont: 37 };
+if (TR && TR.connections_onprem) {
+  const t = TR.connections_onprem;
+  const ok = t.total === C.total && t.unused_3_plus_months === C.dark && t.feed_only_unused_apps === C.review
+    && t.serve_apps_in_use === C.use && TR.containers_onprem_unused === C.cont;
+  if (!ok) throw new Error("s12: the counts no longer match foundation/truth.json");
+}
+
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dOf = (poly) => "M" + poly.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" L") + " Z";
+// a polygon moved inward by d (each edge offset, consecutive offset lines intersected; a parcel is near convex)
+function inset(poly, d) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  const s = a > 0 ? 1 : -1, n = poly.length, lines = [];
+  for (let i = 0; i < n; i++) {
+    const p = poly[i], q = poly[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L * s, ny = dx / L * s;   // inward normal
+    lines.push([[p[0] + nx * d, p[1] + ny * d], [dx, dy], [nx, ny]]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [p1, d1, n1] = lines[(i + n - 1) % n], [p2, d2, n2] = lines[i], v = poly[i];
+    const den = d1[0] * d2[1] - d1[1] * d2[0];
+    let q = null;
+    if (Math.abs(den) > 1e-6) {
+      const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
+      q = [p1[0] + d1[0] * t, p1[1] + d1[1] * t];
+    }
+    // a near-straight or very sharp corner: no long miter spike, the vertex moves by d along the mean normal
+    if (!q || Math.hypot(q[0] - v[0], q[1] - v[1]) > 2.5 * d) {
+      const mx = n1[0] + n2[0], my = n1[1] + n2[1], L = Math.hypot(mx, my) || 1;
+      q = [v[0] + mx / L * d, v[1] + my / L * d];
+    }
+    out.push(q);
+  }
+  return out;
+}
+// the inradius-ish size of a polygon: 2 * area / perimeter (a sliver is small even when it is long)
+function girth(poly) {
+  let per = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; per += Math.hypot(q[0] - p[0], q[1] - p[1]); }
+  return 2 * R.area(poly) / (per || 1);
+}
+
+(async () => {
+  // S11 ends on the land; S12 starts there in the same world state and ends at camera conn
+  const h = await WorldStage.mount(document.querySelector("#ws"), { cam: "land", state: "S09-end" });
+  gsap.set(h.layers.owners, { autoAlpha: 0 });                 // world units: hidden at zoom > 1 (brief §3)
+  const LAND = ["terr-On-prem", "terr-GCP", "terr-AWS"];
+  const landLabels = [];
+  for (const [id, el] of h.labels) { if (LAND.includes(id)) landLabels.push(el); else gsap.set(el, { autoAlpha: 0 }); }
+
+  // ---- which connection is which: illustrative, seeded; districts lean alive or dead so it reads as a city
+  const rnd = R.mulberry32(1203), dist = new Map();
+  for (const pc of W.conn.parcels) if (!dist.has(pc.d)) dist.set(pc.d, rnd());
+  const ranked = W.conn.parcels.map((pc) => [0.62 * dist.get(pc.d) + 0.38 * rnd(), pc]).sort((a, b) => b[0] - a[0]).map((x) => x[1]);
+  // the 22 to review are the next in rank whose outline reads (no slivers: girth >= 9 world units)
+  const useP = ranked.slice(0, C.use), rest = ranked.slice(C.use), revP = [], darkP = [];
+  for (const pc of rest) (revP.length < C.review && girth(pc.p) >= 9 ? revP : darkP).push(pc);
+  if (useP.length + revP.length + darkP.length !== C.total || W.conn.parcels.length !== C.total) throw new Error("s12: parcel counts");
+  const dormant = W.land.containers.filter((c) => c.dormant);
+  if (dormant.length !== C.cont || dormant.some((c) => c.env !== "On-prem")) throw new Error("s12: dormant containers");
+
+  const rect = h.rect, vres = 1;
+  // one veil for the whole scene, never faded (a fade of a full-frame layer costs every frame of the dolly):
+  // the stage colour at 0.72 over the city, as S11 ends, except the land and the connections island (feathered)
+  const vc = document.createElement("canvas");
+  vc.width = Math.round(rect.w * vres); vc.height = Math.round(rect.h * vres);
+  vc.className = "s12-veil";
+  vc.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+  {
+    const g = vc.getContext("2d");
+    g.fillStyle = T.rgba(T.sea, 0.72); g.fillRect(0, 0, vc.width, vc.height);
+    g.setTransform(vres, 0, 0, vres, -rect.x * vres, -rect.y * vres);
+    g.globalCompositeOperation = "destination-out"; g.filter = `blur(${5 * vres}px)`;
+    g.fillStyle = T.rgba(T.sea, 1);
+    for (const poly of [W.land.poly, W.conn.poly]) { R.path(g, poly); g.fill(); }
+    g.filter = "none"; g.globalCompositeOperation = "source-over";
+  }
+  h.world.insertBefore(vc, h.svg);
+
+  // ---- the glow of the 67 (R.bloomCells over the island's box), frozen
+  const bx = R.bb(W.conn.poly), brect = { x: Math.floor(bx[0]) - 40, y: Math.floor(bx[1]) - 40, w: Math.ceil(bx[2] - bx[0]) + 80, h: Math.ceil(bx[3] - bx[1]) + 80 };
+  const bres = 2, bc = document.createElement("canvas");
+  bc.width = brect.w * bres; bc.height = brect.h * bres; bc.className = "s12-bloom";
+  bc.style.cssText = `position:absolute;left:${brect.x}px;top:${brect.y}px;width:${brect.w}px;height:${brect.h}px`;
+  R.bloomCells(bc.getContext("2d"), useP.map((pc) => pc.p), T.inUse, 0.7, 12, brect, bres);
+  h.world.insertBefore(bc, h.svg);
+
+  // ---- the headband: the stage colour from the top, fading by y 340 and towards the port (x 1110-1460)
+  const hb = document.querySelector("#headband");
+  {
+    const g = hb.getContext("2d"), w = hb.width, ht = hb.height, id = g.createImageData(w, ht), d = id.data;
+    const [sr, sg, sb] = T.channels(T.stage), r = R.mulberry32(340);
+    const sm = (t) => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+    for (let y = 0; y < ht; y++) {
+      const ay = 0.94 - 0.1 * sm(y / 160) - 0.84 * sm((y - 120) / (ht - 120));
+      for (let x = 0; x < w; x++) {
+        const a = Math.max(0, ay * (1 - sm((x - 1110) / 350)));
+        const i = (y * w + x) * 4;
+        d[i] = sr; d[i + 1] = sg; d[i + 2] = sb;
+        d[i + 3] = Math.max(0, Math.min(255, Math.round(a * 255 + (r() - 0.5) * 2)));
+      }
+    }
+    g.putImageData(id, 0, 0);
+  }
+  const [, bloom] = await R.freeze([vc, bc, hb]);
+  gsap.set(bloom, { autoAlpha: 0 });
+  // each faded image on its own compositor layer: its fade then never re-rasters the map under it
+  bloom.style.willChange = "opacity";
+
+  // ---- the parcels as SVG in world units, so each can change on its own (a wave, not a slide)
+  // the scene's own SVG (world units, like h.svg) on its own layer: a parcel's change re-rasters only this layer
+  const own = svgEl("svg", { width: 1920, height: 1080, viewBox: "0 0 1920 1080", "data-scene": "s12" }, h.world);
+  own.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none;will-change:transform";
+  // (appended last in the world: above the city's SVG)
+  const G = svgEl("g", {}, own);
+  const gN = svgEl("g", {}, G), gU = svgEl("g", {}, G), gS = svgEl("g", {}, G), gR = svgEl("g", {}, G), gC = svgEl("g", {}, G);
+  const neutral = new Map(), aqua = new Map(), outline = new Map();
+  // each parcel its own shade, as the Apps islands are lit (a district tone + a parcel tone), seeded
+  const sh = R.mulberry32(512), dTone = new Map(), tone = new Map();
+  for (const pc of W.conn.parcels) { if (!dTone.has(pc.d)) dTone.set(pc.d, sh()); tone.set(pc.id, 0.6 * dTone.get(pc.d) + 0.4 * sh()); }
+  for (const pc of W.conn.parcels) neutral.set(pc.id, svgEl("path", { d: dOf(pc.p), fill: T.rgb(T.app), "fill-opacity": (0.2 + 0.16 * tone.get(pc.id)).toFixed(3) }, gN));
+  for (const pc of useP) aqua.set(pc.id, svgEl("path", { d: dOf(pc.p), fill: T.rgb(T.inUse), "fill-opacity": (0.58 + 0.24 * tone.get(pc.id)).toFixed(3) }, gU));
+  // the streets over the lit parcels (the map's own: lots 2, districts 3.4, in the sea's colour)
+  svgEl("path", { d: W.conn.parcels.map((pc) => dOf(pc.p)).join(" "), fill: "none", stroke: T.rgb(T.sea), "stroke-width": 2, "stroke-opacity": 0.85, "stroke-linejoin": "round" }, gS);
+  svgEl("path", { d: W.conn.districts.map(dOf).join(" "), fill: "none", stroke: T.rgb(T.sea), "stroke-width": 3.4, "stroke-linejoin": "round" }, gS);
+  for (const pc of revP) outline.set(pc.id, svgEl("path", { d: dOf(inset(pc.p, 2.6)), fill: "none", stroke: T.rgb(T.review), "stroke-width": 2.2, "stroke-linejoin": "round" }, gR));
+  const contEls = dormant.map((ct) => svgEl("path", { d: dOf(inset(ct.poly, Math.min(1.6, 0.25 * girth(ct.poly)))), fill: "none", stroke: T.rgb(T.review), "stroke-width": 1.8, "stroke-linejoin": "round" }, gC));
+
+  const all = [...neutral.values()];
+  gsap.set(all, { autoAlpha: 0 });
+  gsap.set([...aqua.values()], { autoAlpha: 0 });
+  gsap.set([...outline.values(), ...contEls], { drawSVG: "0%", autoAlpha: 0 });
+  gsap.set(G, { autoAlpha: 0 });
+
+  // orders of the waves (world units): from the island's bridge, west to east
+  const land = W.bridges.needed.find((b) => b.id === "conn").a;
+  const byBridge = (a, b) => Math.hypot(a.c[0] - land[0], a.c[1] - land[1]) - Math.hypot(b.c[0] - land[0], b.c[1] - land[1]);
+  const byX = (a, b) => a.c[0] - b.c[0];
+  const els = (list, map) => list.map((pc) => map.get(pc.id));
+
+  // ---- text: s0 shows the headline and the note only
+  const sub = document.querySelector("#sub"), answer = document.querySelector("#answer");
+  const leds = { dark: "#led-dark", review: "#led-review", use: "#led-use", cont: "#led-cont" };
+  for (const k in leds) leds[k] = document.querySelector(leds[k]);
+  gsap.set([sub, answer, ...Object.values(leds)], { autoAlpha: 0, y: 14 });
+  const n203 = document.querySelector("#n203");
+  // a count is a property of its element, so any seek renders it (no callback; every value here is < 1,000)
+  function counter(tl, el, to, dur, at) {
+    el.textContent = "0";
+    tl.to(el, { innerText: to, snap: { innerText: 1 }, duration: dur, ease: "power1.inOut" }, at);
+  }
+  const rise = (tl, el, at) => tl.to(el, { autoAlpha: 1, y: 0, duration: 0.7, ease: R.MOTION.rise }, at);
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  // s0 -> s1: the dolly to the connections, the pair dims, the 203 light up from their bridge
+  tl.to(landLabels, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, "s0");
+  tl.to(h.world, { ...R.camera("conn"), duration: 2.0, ease: R.MOTION.dolly }, "s0+=0.15");
+  tl.set(G, { autoAlpha: 1 }, "s0+=1.8");
+  tl.to(els(W.conn.parcels.slice().sort(byBridge), neutral), { autoAlpha: 1, duration: 0.35, ease: R.MOTION.light, stagger: { each: 1.1 / C.total } }, "s0+=1.85");
+  rise(tl, sub, "s0+=1.7");
+  counter(tl, n203, C.total, 1.4, "s0+=1.85");
+  tl.addLabel("s1");
+  // s1 -> s2: 114 go dark, west to east
+  tl.to(els(darkP.slice().sort(byX), neutral), { autoAlpha: 0, duration: 0.3, ease: "power1.in", stagger: { each: 1.0 / C.dark } }, "s1");
+  rise(tl, leds.dark, "s1");
+  counter(tl, leds.dark.querySelector(".num"), C.dark, 1.2, "s1+=0.05");
+  tl.addLabel("s2");
+  // s2 -> s3: 22 lose their light and are outlined to review
+  const rs = revP.slice().sort(byX);
+  tl.to(els(rs, neutral), { autoAlpha: 0, duration: 0.4, ease: "power1.in", stagger: { each: 0.5 / C.review } }, "s2");
+  tl.to(els(rs, outline), { autoAlpha: 1, drawSVG: "100%", duration: 0.55, ease: R.MOTION.mark, stagger: { each: 0.5 / C.review } }, "s2+=0.1");
+  rise(tl, leds.review, "s2");
+  counter(tl, leds.review.querySelector(".num"), C.review, 0.8, "s2+=0.05");
+  tl.addLabel("s3");
+  // s3 -> s4: 67 serve apps in use: they take the in-use light, from the bridge outwards; then the sentence
+  tl.to(els(useP.slice().sort(byBridge), aqua), { autoAlpha: 1, duration: 0.4, ease: R.MOTION.kindle, stagger: { each: 0.7 / C.use } }, "s3");
+  tl.to(bloom, { autoAlpha: 1, duration: 1.0, ease: R.MOTION.light }, "s3+=0.2");
+  rise(tl, leds.use, "s3");
+  counter(tl, leds.use.querySelector(".num"), C.use, 1.0, "s3+=0.05");
+  rise(tl, answer, "s3+=1.0");
+  tl.addLabel("s4");
+  // s4 -> s5: same story on the land: the 37 dormant On-prem containers outlined to review
+  tl.to(dormant.map((ct, i) => [ct.c[1], contEls[i]]).sort((a, b) => a[0] - b[0]).map((x) => x[1]), { autoAlpha: 1, drawSVG: "100%", duration: 0.6, ease: R.MOTION.mark, stagger: { each: 0.7 / C.cont } }, "s4");
+  rise(tl, leds.cont, "s4+=0.1");
+  counter(tl, leds.cont.querySelector(".num"), C.cont, 0.9, "s4+=0.15");
+  tl.addLabel("s5");
+
+  await document.querySelector("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5"]);
+})();
+</script>
+</body>
+</html>

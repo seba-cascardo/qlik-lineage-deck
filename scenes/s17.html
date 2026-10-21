@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S17 · The map we didn't have</title>
+<!--
+  S17 "The map we didn't have" (storyboard v4; Task 12 of docs/plans/2026-10-20-night-map-deck.md, world of
+  docs/superpowers/specs/2026-10-20-world-cadastre-design.md §4). The recap is visual, no new text. One click, one
+  continuous sequence (~22 s), then it rests:
+    s0  S16's end: camera stream on one stream district (WORLD.focus_stream), the map dimmed, the headline
+    s1  the camera pulls back to full and the map replays the states the audience saw: S04 (names, the "?"), S06
+        (the needed links dashed, the owner rings with half of them filled), S09 (the dashes become bridges of
+        light, the "?" goes, the bridged islands light up with S09's own in-use fills, without their counts), then
+        the other half of the owners are found one by one, and a wave across all 59 marks turns every owner solid.
+        About four seconds of the complete map (Seba's line lands on it). Then Euler's move ON the city (Seba,
+        2026-10-21: "que se hagan desde nuestra ciudad esas líneas rojas que muestren islas con puentes"): the
+        owners step back, each port becomes a small red dot, a red line runs from it along every bridge that
+        exists now, and as a line reaches its island the island's name gives way to a red dot; three red curves
+        cross the river between Generators and Front ends (the product links: several bridges between the same two
+        banks). A beat with the red graph on the city, then the city fades and only the graph stays, in the same
+        place (deck/scenes/s17_graph.js) = S18's start.
+  Local to this scene (shared files are read-only): a sharper copy of the map for camera stream (res 3.5 over
+  R.camRect("stream", 100), faded out once the dolly is below zoom 2); the detached islands drawn lit (R.map with
+  detached "lit", cut to their coasts) and S09's in-use fills (same rects and seeds as s09.html), faded in as they
+  are bridged; pools of the stage under the icon, the headline and the note while the camera is not at full (the
+  map's own icon air holds at full only, SCENE_BRIEF §4); owner pings and the owners' wave; the red graph.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  /* headline ink from y 54, x 96; a halo of the stage so it holds over the dimmed map at s0 */
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink);
+    text-shadow: 0 0 2px var(--stage), 0 0 6px var(--stage), 0 0 14px var(--stage); }
+  #note { position: absolute; right: 184px; top: 1012px; }
+  #air { position: absolute; pointer-events: none; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">The map we didn't have</h1>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script src="s17_graph.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+$("#icon").src = T.icon;
+
+function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dOf = (poly) => "M" + poly.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" L") + " Z";
+
+// a canvas of the map in world units, placed in the world layer above the shared map and under the SVG
+function mapCanvas(h, rect, res, opt, cut) {
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res);
+  cv.style.cssText = `position:absolute;display:block;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+  h.world.insertBefore(cv, h.svg);
+  const ctx = cv.getContext("2d");
+  R.map(ctx, rect, res, opt);
+  if (cut) {   // keep only these islands (their coast and a hair past it): the rest stays the shared map
+    ctx.save();
+    ctx.setTransform(res, 0, 0, res, -rect.x * res, -rect.y * res);
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.beginPath();
+    for (const poly of cut) { poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); }
+    ctx.fillStyle = T.rgb(T.sea); ctx.strokeStyle = T.rgb(T.sea); ctx.lineWidth = 8; ctx.lineJoin = "round";
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  return cv;
+}
+
+// ---- S09's in-use fills, replayed without their counts (review 2026-10-21: the bridged islands must light up as
+// the audience saw them at S09's end). Same rects, resolutions and seeds as deck/scenes/s09.html, so the same parcels
+// and cells light at the same pixels; hidden until they are bridged
+const RT = W.route;
+function worldCanvas(h, rect, res) {
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(rect.w * res); cv.height = Math.round(rect.h * res);
+  cv.style.cssText = `position:absolute;display:block;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px;visibility:hidden;opacity:0`;
+  h.world.insertBefore(cv, h.svg);
+  return cv;
+}
+// 89 of the 203 On-prem connections in use (truth.json connections_onprem.used): s09.html connCanvas
+function connCanvas(h) {
+  const rect = { x: 250, y: 770, w: 590, h: 225 }, res = 2, cv = worldCanvas(h, rect, res), ctx = cv.getContext("2d");
+  const rn = R.mulberry32(909), ids = W.conn.parcels.map((p) => p.id).filter((id) => id !== RT.db);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rn() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+  const lit = [RT.db].concat(ids.slice(0, TRUTH.connections_onprem.used - 1));
+  R.parcels(ctx, rect, res, lit, { fill: T.inUse, alpha: 0.3 });
+  R.bloomCells(ctx, lit.map((id) => R.parcel(id).p), T.inUse, 0.22, 12, rect, res);
+  cv.__n = lit.length;
+  return cv;
+}
+// 2,773 files used by apps people use (truth.json qvd_files.by_usage valid): s09.html filesCanvas
+function filesCanvas(h) {
+  const rect = { x: 850, y: 740, w: 960, h: 260 }, res = 2, cv = worldCanvas(h, rect, res), ctx = cv.getContext("2d");
+  const xf = (p) => [(p[0] - rect.x) * res, (p[1] - rect.y) * res];
+  const cells = [];
+  let files = 0;
+  R.land(ctx, { xf, s: res, gap: 0, gapAlpha: 0, only: (ct) => ct.cells.some((cl) => cl.u === "valid"),
+    style: (cl) => {
+      if (cl.u !== "valid") return null;
+      cells.push(cl.poly); files += cl.files;
+      return { ground: T.rgba(T.inUse, 0.07), rgb: T.inUse, lum: 0.2, add: false, minTile: 3.4 * res, minGrain: 2.0 * res,
+        gap: 0.8 * res, gapK: 0.32, dotK: 0.5, cover: 0.7, jx: 0.5, jy: 0.08 };
+    } });
+  R.bloomCells(ctx, cells, T.inUse, 0.2, 10, rect, res);
+  cv.__n = files;
+  return cv;
+}
+// a soft pool of the stage in screen space (clear ground for text while the camera is not at full)
+function pool(id, cx, cy, rx, ry, a0, seed) {
+  const w = Math.round(2 * rx), ht = Math.round(2 * ry);
+  const c = R.glow(w, ht, rx, ry, rx, ry, T.stage, a0, seed);
+  c.id = id;
+  c.style.cssText = `position:absolute;left:${Math.round(cx - rx)}px;top:${Math.round(cy - ry)}px;width:${w}px;height:${ht}px;pointer-events:none`;
+  $("#stage").insertBefore(c, $(".scene-title"));
+  return c;
+}
+
+(async () => {
+  // mount at camera full (labels, the "?" and the gf cut are placed for full), then move to S16's camera
+  const h = await WorldStage.mount($("#ws"), { state: "S04-end" });
+  const L = h.layers;
+
+  // ---- local maps: sharp at camera stream; the detached islands lit (the land, Data connections)
+  const crop = mapCanvas(h, R.camRect("stream", 100), 3.5, { detached: "dark" });
+  const det = mapCanvas(h, { x: -96, y: 440, w: 2112, h: 736 }, 2, { detached: "lit" }, [W.land.poly, W.conn.poly]);
+  // ---- the icon's air while the camera is not at full: the stage falls off into the corner (screen space), so
+  // the map never passes under the icon during the pull-back (the map's own air holds at full only)
+  const AIR = 520, AX = 1960, AY = 1120, air = R.glow(AIR, AIR, AX - (1920 - AIR), AY - (1080 - AIR), AIR, AIR, T.stage, 2.4, 17);
+  air.id = "air";
+  air.style.cssText = `position:absolute;left:${1920 - AIR}px;top:${1080 - AIR}px;width:${AIR}px;height:${AIR}px;pointer-events:none`;
+  $("#stage").insertBefore(air, $(".scene-title"));
+  // the headline and the note get their own clear ground at s0 (S16 ends with its left side dark too); both pools go
+  // during the pull-back, once the map has drawn back from them
+  const poolTitle = pool("pool-title", 400, 92, 580, 135, 2.0, 23);
+  const poolNote = pool("pool-note", 1596, 1027, 270, 80, 2.2, 29);
+  // S09's in-use fills of the two bridged islands (no counts on screen: the audience saw them at S09)
+  const connCv = connCanvas(h), filesCv = filesCanvas(h);
+  const validFiles = TRUTH.qvd_files.by_usage.find((u) => u.key === "valid").files;
+  if (connCv.__n !== TRUTH.connections_onprem.used || filesCv.__n !== validFiles) throw new Error("s17: in-use fills do not match truth");
+  const [cropImg, detImg, airImg, poolTitleImg, poolNoteImg, connImg, filesImg] =
+    await R.freeze([crop, det, air, poolTitle, poolNote, connCv, filesCv]);
+
+  // ---- the owners: the half S06 showed, then the rest one by one (seeded order of stage.js), each with a ping
+  const nHalf = Math.round(0.5 * h.ownerOrder.length);
+  const firstHalf = h.ownerOrder.slice(0, nHalf).map((id) => h.owners.get(id).dot);
+  const rest = h.ownerOrder.slice(nHalf).map((id) => h.owners.get(id));
+  const pings = rest.map((o) => mk("circle", { cx: o.at[0], cy: o.at[1], r: 7, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 2.5 }, o.g));
+  // the map complete: one wave across all 59 marks, west to east; every owner's dot goes solid (--ink) and larger,
+  // its ring firms up, a ring of light leaves each (storyboard: "un dueño sólido en cada stream")
+  const all = [...h.owners.values()].sort((a, b) => a.at[0] - b.at[0]);
+  const waves = all.map((o) => mk("circle", { cx: o.at[0], cy: o.at[1], r: 7, fill: "none", stroke: T.rgb(T.ink), "stroke-width": 2.5 }, o.g));
+  const rings = all.map((o) => o.g.firstElementChild), dotsAll = all.map((o) => o.dot);
+
+  // ---- the red graph, on top of the city (deck/scenes/s17_graph.js: the same pixels S18 starts from)
+  const G = S17_GRAPH;
+  const graph = G.draw(h.svg, T);
+
+  // ---- s0: S16's end. Camera stream, the map dimmed, only the headline (and the note: the map is visible)
+  const names = [...h.labels.values()].filter((el) => el !== h.q);
+  gsap.set(h.world, R.camera("stream"));
+  gsap.set(h.veil, { autoAlpha: 0.6 });
+  gsap.set([...names, h.q], { autoAlpha: 0 });
+  gsap.set([L.owners, L.bridged], { autoAlpha: 0 });
+  gsap.set(L.needed, { autoAlpha: 1 });
+  const neededKids = [...L.needed.children];
+  gsap.set(neededKids, { autoAlpha: 0 });
+  gsap.set(rest.map((o) => o.dot), { autoAlpha: 0 });
+  gsap.set(firstHalf, { autoAlpha: 1 });
+  gsap.set([...pings, ...waves], { autoAlpha: 0 });
+  gsap.set([detImg, connImg, filesImg], { autoAlpha: 0 });
+  gsap.set([...graph.lines.map((l) => l.el), ...graph.dots.map((d) => d.el), ...graph.ports.map((d) => d.el)], { autoAlpha: 0 });
+  const bridgedPort = L.bridged.querySelector("[data-port]");
+  const bridgedGroups = h.bridges.bridged;            // land, conn, then gf: each a light bridge of four paths
+  gsap.set(L.bridged, { autoAlpha: 1 });
+  gsap.set([...bridgedGroups, bridgedPort], { autoAlpha: 0 });
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+
+  // 1 · pull back from the stream district to the whole city (labels stay hidden: they are placed for full)
+  tl.to(h.world, Object.assign({ duration: 2.6, ease: R.MOTION.dolly }, R.camera("full")), 0);
+  tl.to(h.veil, { autoAlpha: 0, duration: 1.2, ease: R.MOTION.light }, 1.4);   // the map lights once the headline is clear of it
+  tl.to(cropImg, { autoAlpha: 0, duration: 0.4, ease: "none" }, 1.15);   // zoom ~2.4 -> 1.9: the shared map is sharp enough
+  tl.to(airImg, { autoAlpha: 0, duration: 0.6, ease: R.MOTION.light }, 2.3);
+  tl.to(poolTitleImg, { autoAlpha: 0, duration: 0.7, ease: R.MOTION.light }, 1.7);   // gone before the names rise
+  tl.to(poolNoteImg, { autoAlpha: 0, duration: 0.6, ease: R.MOTION.light }, 2.0);
+
+  // 2 · S04: what we had. The names, then the "?" in the river
+  tl.to(names, { autoAlpha: 1, duration: 0.7, ease: R.MOTION.rise, stagger: 0.03 }, 2.4);
+  tl.to(h.q, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.kindle }, 2.9);
+
+  // 3 · S06: what we needed. The second port and the dashed links, the owner rings with half of them filled
+  tl.to([h.ports.missing, ...h.bridges.needed, h.bridges.gf], { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light, stagger: 0.18 }, 3.8);
+  tl.to(L.owners, { autoAlpha: 1, duration: 0.7, ease: R.MOTION.light }, 4.2);
+
+  // 4 · S09: the dashes become bridges of light, the second port is built, the "?" is answered, the detached
+  // islands come up as terrain
+  const T9 = 5.7;
+  tl.to(bridgedPort, { autoAlpha: 1, duration: 0.5, ease: R.MOTION.kindle }, T9);
+  bridgedGroups.forEach((g, i) => {
+    const at = T9 + 0.1 + i * 0.25, paths = g.querySelectorAll("path");
+    tl.set(g, { autoAlpha: 1 }, at);
+    tl.fromTo(paths, { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.9, ease: R.MOTION.beam, immediateRender: false }, at);
+  });
+  tl.to(neededKids, { autoAlpha: 0, duration: 0.5, ease: R.MOTION.light }, T9 + 0.7);
+  tl.to(h.q, { autoAlpha: 0, duration: 0.5, ease: R.MOTION.light }, T9 + 0.85);   // as the gf light reaches it
+  tl.to(detImg, { autoAlpha: 1, duration: 0.9, ease: R.MOTION.light }, T9 + 0.7);
+  // S09's in-use fills come up as each island's bridge lands: the land first, then Data connections
+  tl.to(filesImg, { autoAlpha: 1, duration: 0.9, ease: R.MOTION.light }, T9 + 0.75);
+  tl.to(connImg, { autoAlpha: 1, duration: 0.9, ease: R.MOTION.light }, T9 + 1.0);
+
+  // 5 · the other half of the owners, one by one: an owner on every stream district
+  const T5 = 7.4, step = 2.8 / rest.length;
+  rest.forEach((o, i) => {
+    const at = T5 + i * step;
+    tl.fromTo(o.dot, { autoAlpha: 0, attr: { r: 0 } }, { autoAlpha: 1, attr: { r: 3.5 }, duration: 0.35, ease: "back.out(2)", immediateRender: false }, at);
+    tl.fromTo(pings[i], { autoAlpha: 1, attr: { r: 7 } }, { autoAlpha: 0, attr: { r: 28 }, duration: 0.75, ease: R.MOTION.lift, immediateRender: false }, at);
+  });
+  const TC = T5 + 2.8 + 0.3;                 // the map complete: every stream has its owner
+  // the beat: a wave west to east across all 59 marks; the dots go solid and stay
+  const EACH = 0.7 / all.length;
+  tl.to(dotsAll, { attr: { r: 5.5, fill: T.rgb(T.ink) }, duration: 0.5, ease: "back.out(2.5)", stagger: EACH }, TC);
+  tl.to(rings, { attr: { stroke: T.rgba(T.ink, 0.9), "stroke-width": 2 }, duration: 0.5, ease: R.MOTION.light, stagger: EACH }, TC);
+  tl.fromTo(waves, { autoAlpha: 0.9, attr: { r: 7 } }, { autoAlpha: 0, attr: { r: 30 }, duration: 0.9, ease: R.MOTION.lift, stagger: EACH, immediateRender: false }, TC);
+
+  // 6 · the complete map holds (~4 s: Seba's line, "every island connected, and someone responsible for each part",
+  // lands on the map with its owners). Then Euler's move, on the city itself: the ports become red dots, a red line
+  // runs from each port along every bridge, and as it reaches its island the name gives way to the island's dot
+  const TD = TC + 4.0;
+  const labelOf = (id) => h.labels.get(id);
+  const ISLAND_LABEL = { metadata: "metadata", sessions: "sessions", reloads: "reloads", telemetry: "telemetry",
+    generators: "generators", frontends: "frontends", conn: "connections", land: "containers" };
+  const others = [...h.labels.keys()].filter((id) => id !== "q" && !Object.values(ISLAND_LABEL).includes(id)).map(labelOf);
+  // the owners step back; so does the light of the product-link crossing (the three red river curves take its place,
+  // and its arc pokes out above them)
+  const gfLight = bridgedGroups[bridgedGroups.length - 1];
+  tl.to([L.owners, ...others, gfLight], { autoAlpha: 0, duration: 0.7, ease: R.MOTION.light }, TD);
+  graph.ports.forEach((d, i) => {           // the two ports: where the lines start
+    tl.set(d.el, { autoAlpha: 1 }, TD + 0.3 + i * 0.15);
+    tl.fromTo(d.el, { attr: { r: 0 } }, { attr: { r: G.R_PORT }, duration: 0.5, ease: "back.out(2.2)", immediateRender: false }, TD + 0.3 + i * 0.15);
+  });
+  // the lines: from the north port first, then the south port, then the product links across the river (from the
+  // middle of the river outward, the way the bridges grew); each line's end time = when its island is reached
+  const DRAW = 1.0, arrive = {};
+  let k = 0;
+  graph.lines.forEach((l) => {
+    const t = l.mid ? TD + 1.45 + (k++ - 10) * 0.12
+      : TD + 0.55 + (l.from === "port:known" ? 0 : 0.5) + (graph.lines.filter((m) => m.from === l.from).indexOf(l)) * 0.09;
+    if (!l.mid) k++;
+    const d = l.mid ? 0.9 : DRAW;
+    tl.set(l.el, { autoAlpha: 1 }, t);
+    tl.fromTo(l.el, { drawSVG: l.mid ? "50% 50%" : "0%" }, { drawSVG: "0% 100%", duration: d, ease: R.MOTION.beam, immediateRender: false }, t);
+    if (!l.mid) arrive[l.to] = Math.min(arrive[l.to] ?? 1e9, t + d);
+  });
+  // each island: its name gives way, its dot lands where the line arrives. The Apps pair's dots sit by the river, far
+  // from their names, so those two names stay until the city fades (the dot reads as that island's)
+  const KEEP = ["generators", "frontends"];
+  graph.dots.forEach((d) => {
+    const ta = arrive[d.id];
+    if (!KEEP.includes(d.id)) tl.to(labelOf(ISLAND_LABEL[d.id]), { autoAlpha: 0, duration: 0.45, ease: R.MOTION.light }, ta - 0.4);
+    tl.set(d.el, { autoAlpha: 1 }, ta - 0.12);
+    tl.fromTo(d.el, { attr: { r: 0 } }, { attr: { r: G.R_DOT }, duration: 0.5, ease: "back.out(2.2)", immediateRender: false }, ta - 0.12);
+  });
+  // a beat (~3 s) with the whole red graph on the city; then the city fades and only the graph stays, in place
+  const TF = TD + 5.5;
+  tl.to([h.map, detImg, connImg, filesImg, L.known, L.bridged, $("#note"), ...KEEP.map((id) => labelOf(ISLAND_LABEL[id]))],
+    { autoAlpha: 0, duration: 1.5, ease: R.MOTION.light }, TF);
+  tl.to({}, { duration: 0.6 }, TF + 1.5);   // the graph alone, still, before the scene rests
+  tl.addLabel("s1");
+
+  window.S17 = { h, graph, tl };
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1"]);
+})();
+</script>
+</body>
+</html>

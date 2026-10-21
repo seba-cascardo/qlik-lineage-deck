@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S03 · Which one can we delete?</title>
+<!--
+  S03 · "Which one can we delete?" (storyboard v4 S03; rebuilt on the night stage 2026-10-21 after Seba's review of
+  the paper intro: "respetando la estética y los assets de las otras"). The paper version is in
+  qa/out/backup_intro/s03.paper.html.
+  The city's river, opened: the two Apps islands of the shared world (deck/shared/world, R.map at zoom 3.5, the
+  stream camera's scale) frame the stage, Generators on the left and Front ends on the right, each with its own coast,
+  contours and light; the two files float in the dark water between them as paper sheets of S08/S09's diary. What the
+  logs say about each file is drawn in the deck's grammar: a bridge of light in --in-use, a lit app parcel, the
+  "to review" outline in --review.
+    s0  the headline over the opened river: the two islands, named, the water between them empty
+    s1  the two files rise as sheets, A over B ("Aparecen las dos tarjetas y la pregunta"), and the chat prompt
+    s2  from A a bridge of light reaches an app on Front ends: Sales YoY lights, "read every morning"
+    s3  a generator lights on Generators and its bridge writes into B every night (three writes, each refreshing
+        "Modified last night"); B takes its orange outline and nothing leaves it: "Read by nobody"
+    s4  the sentence: "Age tells you when a file was written. Not whether anyone still needs it."
+  The example is invented (storyboard: "El ejemplo es inventado"): no figures on the sheets, ages in words, as the
+  script says them; which parcels light is illustrative ("Illustrative example" in the footnote band).
+  Red only in the A/B letters and the icon. Colours only from THEME / theme.js's CSS variables (qa/lint_colors.py).
+  End state: a cut to S04 (night stage, same headline place, same icon).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; color: var(--ink); }   /* ink from y 54, x 96 (the W has no side bearing: measured against S05, S09, S10) */
+  #note { position: absolute; right: 184px; top: 1012px; }       /* footnote band, clear of the icon */
+  #world, #over { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  #world img, #world canvas, #over img, #over canvas { position: absolute; display: block; }
+  /* the city steps back when the files arrive (the deck's dim state, a little lighter) */
+  #veil { position: absolute; inset: 0; background: var(--stage); visibility: hidden; opacity: 0; }
+  svg.fx { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+
+  /* ---------------------------------------------------------------- the files: S08/S09's diary sheet, as a file card */
+  .sheet { position: absolute; width: 560px; height: 176px; }
+  .paper { position: absolute; inset: 0; overflow: hidden; border-radius: 4px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--paper-ink) 9%, transparent),
+      0 18px 46px color-mix(in srgb, var(--paper-ink) 22%, transparent); }
+  .paper > img, .paper > canvas { position: absolute; left: 0; top: 0; width: 560px; height: 176px; display: block; }
+  .letter { position: absolute; left: 0; top: 0; width: 132px; height: 176px; display: flex; align-items: center;
+    justify-content: center; font-size: 112px; line-height: 1; font-weight: 700; color: var(--key); padding-top: 4px;
+    box-sizing: border-box; }
+  .vrule { position: absolute; left: 132px; top: 24px; width: 2px; height: 128px;
+    background: color-mix(in srgb, var(--paper-ink) 12%, transparent); }
+  .fname { position: absolute; left: 160px; top: 26px; font-size: 34px; line-height: 44px; font-weight: 700;
+    color: var(--paper-ink); white-space: nowrap; }
+  .kind { position: absolute; right: 24px; top: 34px; font-size: 24px; line-height: 32px; color: var(--paper-ink-faint);
+    white-space: nowrap; }
+  .srule { position: absolute; left: 160px; right: 24px; top: 86px; height: 2px;
+    background: color-mix(in srgb, var(--paper-ink) 12%, transparent); }
+  .mod { position: absolute; left: 148px; top: 104px; height: 48px; padding: 0 12px; display: flex; align-items: center;
+    gap: 12px; font-size: 28px; line-height: 36px; color: var(--paper-ink-dim); white-space: nowrap; isolation: isolate; }
+  .mod svg { flex: none; }
+  .mod .clock { fill: none; stroke: var(--paper-ink-faint); stroke-width: 2.5; stroke-linecap: round; }
+  .mod .band { position: absolute; inset: 0; border-radius: 6px; z-index: -1; visibility: hidden; opacity: 0;
+    background: color-mix(in srgb, var(--in-use) 26%, transparent); }
+
+  /* ---------------------------------------------------------------- text on the water: the world's own label plates */
+  .lab { position: absolute; left: 0; top: 0; }
+  .lab.w-label .w-dim { font-weight: 400; }
+
+  /* ---------------------------------------------------------------- the chat prompt, on the dark water */
+  #prompt { position: absolute; left: 600px; top: 772px; width: 720px; height: 84px; box-sizing: border-box;
+    border: 2px solid color-mix(in srgb, var(--ink) 26%, transparent); border-radius: 42px;
+    background: color-mix(in srgb, var(--ink) 6%, var(--stage)); display: flex; align-items: center; gap: 22px;
+    padding: 0 34px 0 30px; font-size: 32px; line-height: 40px; color: var(--ink-dim); }
+  #prompt b { color: var(--ink); font-weight: 700; }
+  #prompt .txt { flex: 1; }
+  #prompt svg { flex: none; }
+  #prompt .bubble { fill: none; stroke: var(--ink-dim); stroke-width: 3; stroke-linejoin: round; }
+  #prompt .dots { fill: var(--ink-dim); }
+  #prompt .send { fill: var(--ink-faint); }
+
+  /* ---------------------------------------------------------------- the sentence, in the bottom band (clear water) */
+  #sent { position: absolute; left: 96px; top: 846px; }
+  .sl { font-size: 52px; line-height: 64px; white-space: nowrap; }
+  .sl.l1 { font-weight: 400; color: var(--ink-dim); }
+  .sl.l2 { font-weight: 700; color: var(--ink); }
+  .mk { position: relative; }
+  .mk i { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; border-radius: 3px; transform-origin: 0 50%; }
+  #mk1 i { background: var(--ink-faint); }
+  #mk2 i { background: var(--in-use); }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="world"></div>
+  <div id="veil"></div>
+  <div id="over"></div>
+  <svg class="fx" id="fx" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <div class="sheet" id="sheetA">
+    <div class="paper"></div>
+    <div class="letter">A</div><div class="vrule"></div>
+    <div class="fname">sales_2024.qvd</div><div class="kind">QVD file</div>
+    <div class="srule"></div>
+    <div class="mod">
+      <svg class="clock" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5"/><path d="M16 8.5V16l5 3.2"/></svg>
+      <span>Modified almost two years ago</span>
+    </div>
+  </div>
+  <div class="sheet" id="sheetB">
+    <div class="paper"></div>
+    <div class="letter">B</div><div class="vrule"></div>
+    <div class="fname">stock_daily.qvd</div><div class="kind">QVD file</div>
+    <div class="srule"></div>
+    <div class="mod">
+      <div class="band" id="bandB"></div>
+      <svg class="clock" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5"/><path d="M16 8.5V16l5 3.2"/></svg>
+      <span>Modified last night</span>
+    </div>
+  </div>
+  <svg class="fx" id="rim" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <div id="labels">
+    <div class="lab w-label" id="lbGens">Generators</div>
+    <div class="lab w-label" id="lbFes">Front ends</div>
+    <div class="lab w-label" id="lbSales"><b>Sales YoY</b><span class="w-dim"> · front end</span></div>
+    <div class="lab w-label" id="lbRead">read every morning</div>
+    <div class="lab w-label" id="lbGen"><b>Generator</b></div>
+    <div class="lab w-label" id="lbWrite">written every night</div>
+    <div class="lab w-label" id="lbNobody">Read by <b>nobody</b></div>
+  </div>
+
+
+  <div id="sent">
+    <div class="sl l1" id="sent1">Age tells you when a file was <span class="mk" id="mk1">written<i></i></span>.</div>
+    <div class="sl l2" id="sent2">Not whether anyone <span class="mk" id="mk2">still needs it<i></i></span>.</div>
+  </div>
+
+  <h1 class="scene-title">Which one can we delete?</h1>
+  <div id="note" class="w-note">Illustrative example</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, E = R.MOTION;
+const $ = (s) => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+$("#icon").src = T.icon;
+
+/* ------------------------------------------------------------------ the opened river: two views of the same city
+   The river between the Apps islands, at the stream camera's zoom (3.5), split down its middle and pulled apart:
+   the left view shows Generators' east coast, the right view Front ends' west coast, the water between them widened
+   to hold the files. One mapping per view, screen = O + Z * world. */
+const Z = 3.5, RES = 2 * Z;                  // map px per world unit: sharp at 2x (the 57-inch window), as the deck's res 2 at zoom 1
+const ROW = { A: 330, B: 622 };              // the two rows (screen y of the sheets' middles)
+const WY = { A: 560 };                       // world y of row A; row B follows from the zoom
+WY.B = WY.A + (ROW.B - ROW.A) / Z;
+const OY = ROW.A - Z * WY.A;
+const RIVER_X = 868;                         // the river's middle at world y 600
+const OXL = 470 - Z * RIVER_X, OXR = 1450 - Z * RIVER_X;
+const scrL = (p) => [OXL + Z * p[0], OY + Z * p[1]], scrR = (p) => [OXR + Z * p[0], OY + Z * p[1]];
+const WIN = { x: 718, y: 486, w: 304, h: 312 };          // the world drawn (covers both views, edge to edge)
+const FADE = { top: [138, 236], bottom: [700, 828] };      // screen y: clear of the headline and of the bottom band
+
+const SHEET = { w: 560, h: 176, x: 680 };
+const sheetBox = (row) => ({ x: SHEET.x, y: ROW[row] - SHEET.h / 2, w: SHEET.w, h: SHEET.h });
+
+// the paper of a sheet: S08/S09's dithered paper light, drawn at 2x, frozen
+function paperCanvas(w, h, seed, res = 2) {
+  const c = document.createElement("canvas"); c.width = w * res; c.height = h * res;
+  const g = c.getContext("2d"), id = g.createImageData(c.width, c.height), d = id.data, rn = R.mulberry32(seed);
+  const [pr, pg, pb] = T.channels(T.paper);
+  for (let y = 0; y < c.height; y++) {
+    const fy = Math.min(1, y / res / 488), dk = 9 * fy * fy;          // S09's paper light, over its own height
+    for (let x = 0; x < c.width; x++) {
+      const fx = Math.abs(x - c.width / 2) / (c.width / 2), n = (rn() - 0.5) * 2, k = (y * c.width + x) * 4, s = dk + 4 * fx * fx;
+      d[k] = pr - s + n; d[k + 1] = pg - s + n; d[k + 2] = pb - s + n; d[k + 3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0);
+  return c;
+}
+
+(async () => {
+  await Promise.all(["700 64px Vodafone", "700 112px Vodafone", "700 34px Vodafone", "400 24px Vodafone", "400 28px Vodafone",
+    "500 26px Vodafone", "700 26px Vodafone", "400 26px Vodafone", "400 32px Vodafone", "700 32px Vodafone",
+    "400 52px Vodafone", "700 52px Vodafone"].map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+
+  /* ---------------------------------------------------------------- the city, drawn once at zoom 3.5 */
+  const src = document.createElement("canvas");
+  src.width = Math.round(WIN.w * RES); src.height = Math.round(WIN.h * RES);
+  R.map(src.getContext("2d", { alpha: false }), WIN, RES, { detached: "dark" });
+  const others = (keep) => [W.apps.generators.poly, W.apps.frontends.poly, ...Object.values(W.islands).map((i) => i.poly), W.land.poly, W.conn.poly]
+    .filter((p) => p !== keep);
+  // one view: the island with its coast and the rings of its own water (grown, feathered), the other islands cut
+  // out, faded at the top and bottom; the map's pixels inside that mask (as S04's crops)
+  function view(poly, scr) {
+    const GROW = 34, FEATHER = 12;
+    const b = R.bb(poly), x0 = Math.max(WIN.x, b[0] - GROW - 2 * FEATHER), x1 = Math.min(WIN.x + WIN.w, b[2] + GROW + 2 * FEATHER);
+    const r = { x: x0, y: WIN.y, w: x1 - x0, h: WIN.h };
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(r.w * RES); cv.height = Math.round(r.h * RES);
+    const g = cv.getContext("2d");
+    g.setTransform(RES, 0, 0, RES, -r.x * RES, -r.y * RES);
+    g.fillStyle = g.strokeStyle = T.rgb(T.ink);                    // the mask: any opaque token
+    g.lineJoin = "round";
+    g.filter = `blur(${FEATHER * RES}px)`;
+    R.path(g, poly); g.fill(); g.lineWidth = 2 * GROW; g.stroke();
+    // the other islands cut out with a soft edge too, a little past their coasts: the water fades out across the
+    // river instead of stopping on the far bank in a line
+    g.globalCompositeOperation = "destination-out"; g.lineWidth = 2 * 9;
+    g.filter = `blur(${0.7 * FEATHER * RES}px)`;
+    for (const p of others(poly)) { R.path(g, p); g.fill(); g.stroke(); }
+    g.filter = "none";
+    // fade at the top and bottom (screen y -> world y -> canvas px)
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = "destination-in";
+    const cy = (sy) => (((sy - OY) / Z) - r.y) * RES;
+    const gr = g.createLinearGradient(0, cy(FADE.top[0]), 0, cy(FADE.bottom[1]));
+    const span = FADE.bottom[1] - FADE.top[0], at = (sy) => (sy - FADE.top[0]) / span;
+    const ease = (t) => t * t * (3 - 2 * t);
+    for (let i = 0; i <= 8; i++) {                                   // smoothstep ramps, not linear: no visible edge
+      const t = i / 8;
+      gr.addColorStop(at(FADE.top[0] + t * (FADE.top[1] - FADE.top[0])), T.rgba(T.ink, ease(t)));
+      gr.addColorStop(at(FADE.bottom[0] + t * (FADE.bottom[1] - FADE.bottom[0])), T.rgba(T.ink, ease(1 - t)));
+    }
+    g.fillStyle = gr; g.fillRect(0, 0, cv.width, cv.height);
+    g.globalCompositeOperation = "source-in";
+    g.drawImage(src, (WIN.x - r.x) * RES, 0);
+    const s0 = scr([r.x, r.y]);
+    cv.style.cssText = `left:${s0[0].toFixed(2)}px;top:${s0[1].toFixed(2)}px;width:${(r.w * Z).toFixed(2)}px;height:${(r.h * Z).toFixed(2)}px`;
+    $("#world").appendChild(cv);
+    return cv;
+  }
+  const viewL = view(W.apps.generators.poly, scrL);
+  const viewR = view(W.apps.frontends.poly, scrR);
+
+  /* ---------------------------------------------------------------- the two apps of the story (illustrative picks) */
+  // the parcel nearest a point a little inside the coast at the row's height, and fully inside the faded window
+  const coastX = (poly, wy, side) => {            // the coast's x at world y wy (side -1: east coast of a western island)
+    let best = side < 0 ? -1e9 : 1e9;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      if ((a[1] - wy) * (b[1] - wy) > 0 || a[1] === b[1]) continue;
+      const x = a[0] + (b[0] - a[0]) * (wy - a[1]) / (b[1] - a[1]);
+      best = side < 0 ? Math.max(best, x) : Math.min(best, x);
+    }
+    return best;
+  };
+  const pick = (parcels, at) => {
+    // among the lots at the row's height (its bridge arrives level) and a little inside the coast, the one that
+    // reads best as a lot: big and not a sliver
+    let best = null, bs = -1;
+    for (const p of parcels) {
+      const d = Math.hypot(p.c[0] - at[0], p.c[1] - at[1]);
+      if (Math.abs(p.c[1] - at[1]) > 6 || Math.abs(p.c[0] - at[0]) > 24) continue;
+      const bb = R.bb(p.p), w = bb[2] - bb[0], h = bb[3] - bb[1], sc = R.area(p.p) * Math.min(w, h) / Math.max(w, h) - 0.8 * d;
+      if (sc > bs) { bs = sc; best = p; }
+    }
+    if (!best) throw new Error("S03: no app parcel near " + at.map(Math.round));
+    return best;
+  };
+  const INSET = 34;                                                     // world units inside the coast
+  const salesP = pick(W.apps.frontends.parcels, [coastX(W.apps.frontends.poly, WY.A, 1) + INSET, WY.A]);
+  const genP = pick(W.apps.generators.parcels, [coastX(W.apps.generators.poly, WY.B, -1) - INSET, WY.B]);
+  // a lit parcel: its light (R.bloomCells) and its fill in --in-use, on a canvas in world units, placed in its view
+  function litParcel(pc, scr, seed) {
+    const b = R.bb(pc.p), pad = 26, r = { x: b[0] - pad, y: b[1] - pad, w: b[2] - b[0] + 2 * pad, h: b[3] - b[1] + 2 * pad };
+    const cv = document.createElement("canvas"); cv.width = Math.round(r.w * RES); cv.height = Math.round(r.h * RES);
+    const ctx = cv.getContext("2d");
+    R.bloomCells(ctx, [pc.p], T.inUse, 1.5, 10, r, RES, seed);
+    R.parcels(ctx, r, RES, [pc], { fill: T.inUse, alpha: 0.95 });
+    R.parcels(ctx, r, RES, [pc], { stroke: T.app, width: 0.5, alpha: 0.55 });
+    const s0 = scr([r.x, r.y]);
+    cv.style.cssText = `left:${s0[0].toFixed(2)}px;top:${s0[1].toFixed(2)}px;width:${(r.w * Z).toFixed(2)}px;height:${(r.h * Z).toFixed(2)}px`;
+    $("#over").appendChild(cv);
+    return cv;
+  }
+  const salesCv = litParcel(salesP, scrR, 31), genCv = litParcel(genP, scrL, 37);
+  const SALES = scrR(salesP.c), GEN = scrL(genP.c);
+
+  /* ---------------------------------------------------------------- the sheets */
+  const papers = [];
+  for (const [id, row, seed] of [["#sheetA", "A", 31], ["#sheetB", "B", 32]]) {
+    const el = $(id), bx = sheetBox(row);
+    el.style.left = bx.x + "px"; el.style.top = bx.y + "px";
+    const pc = paperCanvas(SHEET.w, SHEET.h, seed);
+    $(id + " .paper").appendChild(pc);
+    papers.push(pc);
+  }
+  await R.freeze([viewL, viewR, salesCv, genCv, ...papers]);
+  const [imgL, imgR, salesImg, genImg] = R.fz([viewL, viewR, salesCv, genCv]);
+
+  /* ---------------------------------------------------------------- bridges of light (screen units) */
+  const fx = $("#fx"), A = sheetBox("A"), B = sheetBox("B");
+  const bridgeA = { id: "a-read", a: [A.x + A.w - 4, ROW.A], b: SALES, c: [(A.x + A.w + SALES[0]) / 2, Math.min(ROW.A, SALES[1]) - 34] };
+  const bridgeB = { id: "b-write", a: GEN, b: [B.x + 4, ROW.B], c: [(GEN[0] + B.x) / 2, Math.min(ROW.B, GEN[1]) - 34] };
+  // R.lightBridge as the world draws it, at twice its scale (the city here is at 3.5: x2 keeps the bridge a line of
+  // light, not a pipe): drawn in a group scaled 2, with its points halved
+  const K = 2, gK = svgEl("g", { transform: `scale(${K})` }, fx);
+  const half = (b) => ({ id: b.id, a: b.a.map((v) => v / K), c: b.c.map((v) => v / K), b: b.b.map((v) => v / K) });
+  const brA = R.lightBridge(gK, half(bridgeA), { arrow: true });
+  const brB = R.lightBridge(gK, half(bridgeB), { arrow: true });
+  const parts = (br) => { const ps = [...br.g.querySelectorAll("path")]; return { lines: ps.slice(0, 4), arrow: ps[4] }; };
+  const pA = parts(brA), pB = parts(brB);
+  // a ring round each lit app as it kindles (S04's "?" rings, once)
+  const ring = (at) => svgEl("circle", { cx: at[0], cy: at[1], r: 22, fill: "none", stroke: T.rgb(T.inUse), "stroke-width": 3 }, fx);
+  const ringA = ring(SALES), ringB = ring(GEN);
+  // pulses: a short run of light along a bridge (a read or a write travelling)
+  const pulse = (b) => {
+    const g = svgEl("g", {}, gK), d = R.bridgeD(half(b));
+    const halo = svgEl("path", { d, fill: "none", stroke: T.rgb(T.inUse), "stroke-width": 7, "stroke-opacity": 0.5 * T.halo, "stroke-linecap": "round" }, g);
+    const core = svgEl("path", { d, fill: "none", stroke: T.rgb(T.app), "stroke-width": 2.4, "stroke-linecap": "round" }, g);
+    return { g, paths: [halo, core] };
+  };
+  const pulsesA = [0, 1].map(() => pulse(bridgeA)), pulsesB = [0, 1, 2].map(() => pulse(bridgeB));
+
+  // B's outline: --review, on the sheet's edge, with the halo of the deck's lights (x THEME.halo)
+  const rim = $("#rim");
+  const rr = (x, y, w, h, r) => `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h}` +
+    ` H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
+  const rimD = rr(B.x - 1, B.y - 1, B.w + 2, B.h + 2, 5);
+  const rimHalo = svgEl("path", { d: rimD, fill: "none", stroke: T.rgb(T.review), "stroke-width": 14, "stroke-opacity": 0.3 * T.halo, "stroke-linejoin": "round" }, rim);
+  const rimCore = svgEl("path", { d: rimD, fill: "none", stroke: T.rgb(T.review), "stroke-width": 5, "stroke-linejoin": "round" }, rim);
+
+  /* ---------------------------------------------------------------- labels (the world's plates), placed */
+  const place = (el, x, y, ax, ay) => { el.style.left = (x - ax * el.offsetWidth).toFixed(1) + "px"; el.style.top = (y - ay * el.offsetHeight).toFixed(1) + "px"; };
+  place($("#lbGens"), 96, 172, 0, 0.5);
+  place($("#lbFes"), 1824, 172, 1, 0.5);
+  place($("#lbSales"), SALES[0], SALES[1] - 46, 0.5, 1);
+  place($("#lbGen"), GEN[0], GEN[1] - 46, 0.5, 1);
+  // the bridges' words over the water, above each bridge's middle
+  const mid = (b) => { const t = 0.5, u = 1 - t; return [u * u * b.a[0] + 2 * u * t * b.c[0] + t * t * b.b[0], u * u * b.a[1] + 2 * u * t * b.c[1] + t * t * b.b[1]]; };
+  const mA = mid(bridgeA), mB = mid(bridgeB);
+  place($("#lbRead"), mA[0], mA[1] + 26, 0.5, 0);
+  place($("#lbWrite"), mB[0], mB[1] + 26, 0.5, 0);
+  place($("#lbNobody"), B.x + B.w + 44, ROW.B, 0, 0.5);
+
+  /* ---------------------------------------------------------------- the timeline */
+  const RISE = 14;
+  const labs = (ids) => ids.map((i) => $(i));
+  const story = ["#veil", salesImg, genImg, ringA, ringB, brA.g, brB.g, pA.arrow, pB.arrow, ...pulsesA.map((p) => p.g), ...pulsesB.map((p) => p.g), rimHalo, rimCore, $("#bandB")];
+  gsap.set(story, { autoAlpha: 0 });
+  gsap.set(["#sheetA", "#sheetB", "#sent1", "#sent2", ...labs(["#lbSales", "#lbRead", "#lbGen", "#lbWrite", "#lbNobody"])], { autoAlpha: 0, y: RISE });
+  gsap.set(".mk i", { scaleX: 0 });
+  const tl = gsap.timeline({ paused: true }).addLabel("s0", 0);
+  const rise = (el, at, d = 0.7) => tl.to(el, { autoAlpha: 1, y: 0, duration: d, ease: E.rise }, at);
+  const kindle = (img, rg, at) => {
+    tl.to(img, { autoAlpha: 1, duration: 0.6, ease: E.kindle }, at);
+    tl.fromTo(rg, { autoAlpha: 0.8, attr: { r: 22, "stroke-width": 3 } },
+      { autoAlpha: 0, attr: { r: 70, "stroke-width": 1.2 }, duration: 1.1, ease: "power2.out", immediateRender: false }, at + 0.05);
+  };
+  const beam = (br, p, at, d = 0.9) => {
+    tl.set(br.g, { autoAlpha: 1 }, at);
+    tl.fromTo(p.lines, { drawSVG: "0%" }, { drawSVG: "100%", duration: d, ease: E.beam, immediateRender: false }, at);
+    tl.fromTo(p.arrow, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2, immediateRender: false }, at + d * 0.62);
+  };
+  const run = (pl, at, d) => {
+    tl.set(pl.g, { autoAlpha: 1 }, at);
+    tl.fromTo(pl.paths, { drawSVG: "0% 0%" }, { drawSVG: "84% 100%", duration: d, ease: "power1.inOut", immediateRender: false }, at);
+    tl.set(pl.g, { autoAlpha: 0 }, at + d);
+  };
+
+  // ---- s1: the two files rise into the water (the chat prompt was removed, Seba 2026-10-21)
+  tl.to("#veil", { autoAlpha: 0.5, duration: 0.9, ease: E.light }, 0);
+  rise("#sheetA", 0.0, 0.8);
+  rise("#sheetB", 0.22, 0.8);
+  tl.addLabel("s1", 1.45);
+
+  // ---- s2: A is read every morning by an app on Front ends
+  const S2 = tl.labels.s1;
+  beam(brA, pA, S2 + 0.25, 1.0);
+  kindle(salesImg, ringA, S2 + 1.05);
+  rise("#lbSales", S2 + 1.2);
+  rise("#lbRead", S2 + 0.75);
+  pulsesA.forEach((pl, k) => run(pl, S2 + 1.55 + k * 0.5, 0.75));
+  tl.addLabel("s2", S2 + 2.95);
+
+  // ---- s3: B is written every night by a generator, and read by nobody
+  const S3 = tl.labels.s2;
+  kindle(genImg, ringB, S3);
+  rise("#lbGen", S3 + 0.15);
+  beam(brB, pB, S3 + 0.45, 0.9);
+  rise("#lbWrite", S3 + 0.85);
+  pulsesB.forEach((pl, k) => {
+    const at = S3 + 1.35 + k * 0.55, d = 0.5;
+    run(pl, at, d);
+    tl.to("#bandB", { autoAlpha: 1, duration: 0.08 }, at + d - 0.04);                // "Modified last night", again
+    tl.to("#bandB", { autoAlpha: 0, duration: 0.35, ease: "power1.out" }, at + d + 0.1);
+  });
+  const R3 = S3 + 1.35 + 3 * 0.55 + 0.25;
+  tl.set(rimHalo, { autoAlpha: 1 }, R3);
+  tl.set(rimCore, { autoAlpha: 1 }, R3);
+  tl.fromTo([rimHalo, rimCore], { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.9, ease: E.beam, immediateRender: false }, R3);
+  rise("#lbNobody", R3 + 0.45);
+  tl.addLabel("s3", R3 + 1.25);
+
+  // ---- s4: the sentence
+  const S4 = tl.labels.s3;
+  rise("#sent1", S4, 0.8);
+  rise("#sent2", S4 + 0.3, 0.8);
+  tl.to("#mk1 i", { scaleX: 1, duration: 0.55, ease: E.mark }, S4 + 0.8);
+  tl.to("#mk2 i", { scaleX: 1, duration: 0.55, ease: E.mark }, S4 + 1.05);
+  tl.addLabel("s4", S4 + 1.7);
+  tl.set({}, {}, "s4");                                    // the last label is the end: ?at=end rests on everything
+
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4"]);
+})();
+</script>
+</body>
+</html>

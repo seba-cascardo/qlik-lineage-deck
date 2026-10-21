@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S18 · Dots and lines</title>
+<!--
+  S18 "Dots and lines" (storyboard v4; redesigned with Seba's note of 2026-10-21, 09:40: the red lines come from our
+  city, show islands with bridges, as Euler did, and then become the Vodafone logo). Euler in passing: no city name,
+  no historic map, no portrait.
+    s0  = S17's end: the stage and the red graph S17 drew on the city (deck/scenes/s17_graph.js), in place (world
+        units = stage px at camera full, so an svg of 1920 x 1080 with viewBox "0 0 1920 1080" draws S17's pixels)
+    s1  the graph eases into the left part of the frame (moves and scales as one group); "Euler, 1736", small, on
+        the headline's baseline at the right margin
+    s2  "Sometimes the answer is the smaller part of what you find." rises line by line in the space the graph
+        left; "Euler, 1736" steps back (the sentence is ours, not his)
+    s3  (continuous, ~5 s) the text goes; the graph travels into the speechmark as itself (each line a smooth curve
+        between its two moving dots, the three river curves still three): the two ports and the Apps pair land on
+        the network's four big hubs, the outer islands on the outline (so the graph already spans the mark); then
+        S19's network grows out of the landed dots along its own edges, at an even pace, the inside first and the
+        silhouette closing last, while the graph's curves step back; "Together we can" comes in on the left. The
+        last frame IS S19's first frame (same network, same strapline, same positions and sizes: "match" in the
+        scene contract), so the player's cross-fade S18 -> S19 is invisible.
+  The speechmark network is S19's own data (s19_data.js: the official shape traced by s19_build.py) built with S19's
+  own code and CSS (below, "S19's s0"); S19 is not changed.
+  Colours only from THEME / the CSS variables of deck/shared/world/theme.js (qa/lint_colors.py); red = the graph and
+  the speechmark, the close's one key moment (THEME.key).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<script src="../shared/world/theme.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  #ws svg { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  /* the headline's ink from y 54, x 96 (-4: the D's side bearing); "Euler, 1736" sits on its baseline at the right
+     margin */
+  #head { position: absolute; left: 96px; right: 96px; top: 41px; display: flex; justify-content: space-between;
+    align-items: baseline; }
+  #head .scene-title { position: static; line-height: 70px; margin-left: -4px; color: var(--ink); white-space: nowrap; }
+  #euler { font-size: 32px; line-height: 70px; font-weight: 400; color: var(--ink-dim); letter-spacing: 0.04em;
+    white-space: nowrap; }
+  /* the sentence: three lines, each rising out of its own mask */
+  #line { position: absolute; margin: 0; font-size: 56px; line-height: 66px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.005em; }
+  #line .ln { display: block; overflow: hidden; padding: 0 12px 14px 0; margin-bottom: -14px; }
+  #line .in { display: inline-block; white-space: nowrap; will-change: transform; }
+  /* ---- S19's s0, with S19's own rules (deck/scenes/s19.html): the mark 620 px tall, its box centred on the frame */
+  .mk { position: absolute; left: 728px; top: 230px; width: 464px; height: 620px; overflow: visible; }
+  .mk .net line, .mk .net path { fill: none; stroke: var(--key); stroke-linecap: round; stroke-linejoin: round; }
+  .mk .net circle { fill: var(--key); stroke: none; }
+  .mk .swell path { fill: none; stroke: var(--key); stroke-linecap: round; stroke-linejoin: round; }
+  .mk .fill { fill: var(--key); }
+  .say { position: absolute; margin: 0; font-size: 64px; line-height: 76px; white-space: nowrap; color: var(--ink); }
+  #together { right: 1296px; top: 563px; font-weight: 400; text-align: right; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <svg class="mk" id="mark" viewBox="0 0 748.8 1000" aria-label="Vodafone speechmark"></svg>
+  <svg class="mk" id="grow" viewBox="0 0 748.8 1000" aria-hidden="true"></svg>
+  <p class="say" id="together">Together we can</p>
+  <div id="ws"><svg id="graph" width="1920" height="1080" viewBox="0 0 1920 1080"></svg></div>
+  <header id="head">
+    <h1 class="scene-title">Dots and lines</h1>
+    <div id="euler">Euler, 1736</div>
+  </header>
+  <p id="line"><span class="ln"><span class="in">Sometimes the answer</span></span><span class="ln"><span class="in">is the smaller part</span></span><span class="ln"><span class="in">of what you find.</span></span></p>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="s17_graph.js"></script>
+<script src="s19_data.js"></script>
+<script>
+const T = window.THEME, G = window.S17_GRAPH, D = window.S19;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+$("#icon").src = T.icon;
+// the motion grammar of deck/shared/world/world.js (R.MOTION), without loading the city for it
+const MOTION = { rise: "expo.out", dolly: "power3.inOut", light: "power1.inOut", travel: "power3.inOut" };
+const el = (tag, attrs, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+// ---- S19's s0, built by S19's own code (deck/scenes/s19.html, the band loop) into `svg`: the network per band, its
+// swelling copy clipped to the shape at S19's first frame (the lines at INNER width; S19's fromTo renders that at
+// once), the solid fill hidden. Returns the groups so a copy can be masked.
+const K = 620 / D.h, LINE = 3.4 / K, INNER = 2.4 / K;
+function buildS19(svg, id) {
+  const defs = el("defs", {}, svg);
+  const clip = el("clipPath", { id: "clip-" + id }, defs);
+  el("path", { d: D.path }, clip);
+  const wrap = el("g", {}, svg);
+  const net = el("g", { class: "net" }, wrap);
+  const swell = el("g", { class: "swell", "clip-path": `url(#clip-${id})` }, wrap);
+  const isOutline = (u, v) => u < D.nc && v < D.nc && (Math.abs(u - v) === 1 || Math.abs(u - v) === D.nc - 1);
+  for (let b = 0; b < D.nb; b++) {
+    const g = el("g", {}, net);
+    const outline = [], inner = [], dots = [];
+    D.edges.forEach(([u, v], i) => {
+      if (D.edgeBand[i] !== b) return;
+      const [x1, y1] = D.nodes[u], [x2, y2] = D.nodes[v];
+      (isOutline(u, v) ? outline : inner).push(`M${x1} ${y1}L${x2} ${y2}`);
+    });
+    if (inner.length) el("path", { d: inner.join(""), "stroke-width": INNER, opacity: 0.8 }, g);
+    if (outline.length) el("path", { d: outline.join(""), "stroke-width": LINE }, g);
+    D.nodes.forEach(([x, y, r], i) => {
+      if (D.nodeBand[i] !== b) return;
+      el("circle", { cx: x, cy: y, r: r }, g);
+      dots.push(`M${x} ${y}h0`);
+    });
+    el("path", { d: outline.concat(inner).join("") || "M0 0", "stroke-width": INNER }, swell);
+    el("path", { d: dots.join("") || "M0 0", "stroke-width": 0 }, swell);
+  }
+  el("path", { class: "fill", d: D.path, opacity: 0 }, svg);
+  return { defs, wrap };
+}
+
+(async () => {
+  await document.fonts.ready;
+  const graph = G.draw($("#graph"), T);
+
+  // ---- s1: the graph's place in the left part of the frame (one group: scale K1, then moved), the sentence in the
+  // space it leaves, centred on the graph's height. Computed from the shared nodes, so a change in s17_graph.js
+  // carries over.
+  const K1 = 0.8;
+  const pts = [...Object.values(G.NODES), ...Object.values(G.PORTS)];
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const bx0 = Math.min(...xs) - G.R_DOT, bx1 = Math.max(...xs) + G.R_DOT;
+  const by0 = Math.min(...ys) - G.R_DOT, by1 = Math.max(...ys) + G.R_DOT;
+  const CY = 590;                                                   // the graph's middle, between headline and footer
+  const DX = Math.round(136 - bx0 * K1), DY = Math.round(CY - ((by0 + by1) / 2) * K1);
+  const right = bx1 * K1 + DX;
+  const say = $("#line"), sayW = Math.max(...[...say.querySelectorAll(".in")].map((e) => e.offsetWidth));
+  const colX = Math.min(Math.max(Math.round(right + 160), 960), 1824 - sayW);
+  say.style.left = colX + "px";
+  say.style.top = Math.round(CY - say.offsetHeight / 2 + 7) + "px";   // +7: the descender pad
+
+  // ---- s3: where each dot lands on the speechmark network (screen px of S19's svg: viewBox fitted into the box)
+  const S = Math.min(464 / D.w, 620 / D.h), OX = 728 + (464 - D.w * S) / 2, OY = 230 + (620 - D.h * S) / 2;
+  const scr = (i) => [OX + D.nodes[i][0] * S, OY + D.nodes[i][1] * S];
+  const loc = (p) => [(p[0] - DX) / K1, (p[1] - DY) / K1];         // screen -> the graph group's own units
+  // the islands keep their places, so the graph's span already sketches the mark before the network fills it: the
+  // ports and the Apps pair on the four big hubs at its heart (north port at the top, the Apps pair side by side,
+  // south port below), the outer islands on the outline: Metadata top-left, Sessions the curl's tip, Reloads left,
+  // Telemetry right, Data connections bottom-left, the land bottom-right
+  const TARGET = { "port:known": 58, "port:missing": 76, generators: 59, frontends: 54, metadata: 44, sessions: 0,
+    reloads: 40, telemetry: 11, conn: 31, land: 20 };
+  // each line travels as itself: a smooth curve between its two moving dots, with the bow it has on the city (its
+  // middle's offset from the chord, as a share of the chord), so the graph stays recognisable all the way. Both ends
+  // follow the dots exactly (same ease, same start and end points), and the three river curves stay three.
+  const quad = (a, b, k) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    const c = [(a[0] + b[0]) / 2 - (dy / len) * 2 * k * len, (a[1] + b[1]) / 2 + (dx / len) * 2 * k * len];
+    const pts = [];
+    for (let i = 0; i <= 80; i++) {
+      const t = i / 80, u = 1 - t;
+      pts.push([u * u * a[0] + 2 * u * t * c[0] + t * t * b[0], u * u * a[1] + 2 * u * t * c[1] + t * t * b[1]]);
+    }
+    return G.resample(pts, G.N);
+  };
+  const bowOf = (pts) => {
+    const a = pts[0], b = pts[pts.length - 1], m = pts[pts.length >> 1];
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    return (-(dy / len) * (m[0] - (a[0] + b[0]) / 2) + (dx / len) * (m[1] - (a[1] + b[1]) / 2)) / len;
+  };
+  const lineTo = graph.lines.map((l) => {
+    const k = Math.max(-0.22, Math.min(0.22, bowOf(l.pts) * (l.mid ? 1.7 : 1)));
+    return G.dOf(quad(loc(scr(TARGET[l.from])), loc(scr(TARGET[l.to])), k));
+  });
+
+  // ---- S19's s0: the exact copy (shown at the very end) and a copy revealed by the network growing along its own
+  // edges out of the landed dots: a mask of the edges drawing at an even pace (graph distance from the ten dots,
+  // Dijkstra over the network) and of the nodes opening as an edge reaches them. The outline counts 1.5 x its length,
+  // so the inside fills first and the silhouette closes last. Once every edge and node is in the mask, the masked
+  // copy is the same pixels as the exact one.
+  buildS19($("#mark"), "mark");
+  const grow = buildS19($("#grow"), "grow");
+  const seeds = [...new Set(Object.values(TARGET))];
+  const isOutline = (u, v) => u < D.nc && v < D.nc && (Math.abs(u - v) === 1 || Math.abs(u - v) === D.nc - 1);
+  const len = (u, v) => Math.hypot(D.nodes[u][0] - D.nodes[v][0], D.nodes[u][1] - D.nodes[v][1]);
+  const wOf = (u, v) => len(u, v) * (isOutline(u, v) ? 1.5 : 1);
+  const adj = D.nodes.map(() => []);
+  D.edges.forEach(([u, v]) => { adj[u].push(v); adj[v].push(u); });
+  const dist = D.nodes.map(() => Infinity), done = D.nodes.map(() => false);
+  seeds.forEach((s) => (dist[s] = 0));
+  for (;;) {
+    let u = -1;
+    dist.forEach((d, i) => { if (!done[i] && d < Infinity && (u < 0 || d < dist[u])) u = i; });
+    if (u < 0) break;
+    done[u] = true;
+    for (const v of adj[u]) if (dist[u] + wOf(u, v) < dist[v]) dist[v] = dist[u] + wOf(u, v);
+  }
+  const GROW = 2.3;                                   // the farthest node is reached GROW s after the growth starts
+  const SPEED = Math.max(...dist) / GROW;             // weighted units per second
+  const mask = el("mask", { id: "grow-mask", maskUnits: "userSpaceOnUse", x: -400, y: -400, width: 1600, height: 1800 }, grow.defs);
+  mask.style.maskType = "alpha";
+  const ink = T.rgb(T.key), MW = 14;                  // mask strokes: wider than the outline (5.5 units), round
+  const growth = [];                                  // [el, from attrs, to attrs, start, duration] (s after the start)
+  let growEnd = 0;
+  D.edges.forEach(([u, v]) => {
+    // the two fronts, from u and from v, meet where they arrive at the same time (all of it from u on a tree edge)
+    const L0 = len(u, v), w = wOf(u, v) / L0, s = SPEED / w;            // s: px-units per second on this edge
+    const tu = dist[u] / SPEED, tv = dist[v] / SPEED;
+    const x = Math.max(0, Math.min(L0, (s * (tv - tu) + L0) / 2));
+    const P = [D.nodes[u][0] + (D.nodes[v][0] - D.nodes[u][0]) * x / L0, D.nodes[u][1] + (D.nodes[v][1] - D.nodes[u][1]) * x / L0];
+    [[u, tu, x], [v, tv, L0 - x]].forEach(([n, t0, part]) => {
+      if (part < 0.5) return;
+      const [nx, ny] = D.nodes[n];
+      const e = el("path", { d: `M${nx} ${ny}L${nx} ${ny}`, fill: "none", stroke: ink, "stroke-width": MW, "stroke-linecap": "round" }, mask);
+      growth.push([e, { d: `M${nx} ${ny}L${nx} ${ny}` }, { d: `M${nx} ${ny}L${P[0]} ${P[1]}` }, t0, part / s]);
+      growEnd = Math.max(growEnd, t0 + part / s);
+    });
+  });
+  D.nodes.forEach(([x, y, r], i) => {
+    const e = el("circle", { cx: x, cy: y, r: 0, fill: ink }, mask);
+    growth.push([e, { r: 0 }, { r: r + 6 }, dist[i] / SPEED, 0.32]);
+    growEnd = Math.max(growEnd, dist[i] / SPEED + 0.32);
+  });
+  grow.wrap.setAttribute("mask", "url(#grow-mask)");
+
+  // ---- s0
+  const words = [...say.querySelectorAll(".in")];
+  gsap.set($("#euler"), { autoAlpha: 0 });
+  gsap.set(words, { yPercent: 110, autoAlpha: 0 });
+  gsap.set([$("#mark"), $("#grow"), $("#together")], { autoAlpha: 0 });
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  // s1: the graph eases into the left part of the frame as one group; "Euler, 1736" rises a little, in passing
+  tl.fromTo(graph.g, { attr: { transform: "translate(0 0) scale(1)" } },
+    { attr: { transform: `translate(${DX} ${DY}) scale(${K1})` }, duration: 1.6, ease: MOTION.dolly, immediateRender: false }, "s0");
+  tl.fromTo($("#euler"), { autoAlpha: 0, y: 14, letterSpacing: "0.2em" },
+    { autoAlpha: 1, y: 0, letterSpacing: "0.04em", duration: 1.0, ease: MOTION.rise, immediateRender: false }, "s0+=0.4");
+  tl.addLabel("s1");
+  // s2: the sentence rises line by line; "Euler, 1736" steps back as it arrives
+  tl.to(words, { yPercent: 0, autoAlpha: 1, duration: 1.2, ease: MOTION.rise, stagger: 0.16 }, "s1");
+  tl.to($("#euler"), { autoAlpha: 0.7, duration: 0.9, ease: MOTION.light }, "s1+=0.2");
+  tl.addLabel("s2");
+
+  // s3: the graph becomes the speechmark
+  tl.to([say, $("#euler"), $("#head .scene-title")], { autoAlpha: 0, duration: 0.6, ease: MOTION.light }, "s2");
+  const TM = 0.3, DM = 2.0;                          // the travel: every dot to its node, every line with its dots
+  [...graph.dots, ...graph.ports].forEach((d) => {
+    const [x, y] = loc(scr(TARGET[d.id]));
+    tl.to(d.el, { attr: { cx: x, cy: y, r: (D.nodes[TARGET[d.id]][2] * S) / K1 }, duration: DM, ease: MOTION.travel }, `s2+=${TM}`);
+  });
+  graph.lines.forEach((l, i) => {
+    tl.to(l.el, { attr: { d: lineTo[i], "stroke-width": 3 / K1 }, duration: DM, ease: MOTION.travel }, `s2+=${TM}`);
+  });
+  // the network grows out of the landed dots along its own edges (it starts as the dots settle, so no frame holds
+  // the bare graph); the graph's curves step back as the network's lines arrive, its dots once the nodes under them
+  // are open
+  const TG = TM + DM * 0.85;
+  tl.set($("#grow"), { autoAlpha: 1 }, `s2+=${TG}`);
+  growth.forEach(([e, from, to, t0, d]) => {
+    gsap.set(e, { visibility: "hidden" });           // a zero-length round stroke would show as a dot before its time
+    tl.set(e, { visibility: "visible" }, `s2+=${TG + t0}`);
+    tl.fromTo(e, { attr: from }, { attr: to, duration: d, ease: "none", immediateRender: false }, `s2+=${TG + t0}`);
+  });
+  tl.to(graph.lines.map((l) => l.el), { autoAlpha: 0, duration: 1.4, ease: MOTION.light }, `s2+=${TG + 0.2}`);
+  tl.to([...graph.dots.map((d) => d.el), ...graph.ports.map((d) => d.el)],
+    { autoAlpha: 0, duration: 0.5, ease: MOTION.light }, `s2+=${TG + 0.6}`);
+  tl.to($("#together"), { autoAlpha: 1, duration: 1.2, ease: MOTION.light }, `s2+=${TG + 0.9}`);
+  // S19's s0 exactly: the unmasked copy in, the masked one out (the same pixels once the mask covers everything)
+  const TE = TG + Math.max(growEnd, 0.9 + 1.2) + 0.05;
+  tl.set($("#mark"), { autoAlpha: 1 }, `s2+=${TE}`);
+  tl.set($("#grow"), { autoAlpha: 0 }, `s2+=${TE}`);
+  tl.addLabel("s3", `s2+=${TE + 0.6}`);              // a short still beat on the finished mark
+  tl.to({}, { duration: 0.01 }, "s3-=0.01");          // the timeline ends on s3
+
+  window.S18 = { graph, tl, DX, DY, K1, colX, growEnd, TARGET };
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3"]);
+})();
+</script>
+</body>
+</html>

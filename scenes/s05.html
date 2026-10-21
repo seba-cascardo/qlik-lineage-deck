@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S05 · Four questions we couldn't answer</title>
+<!--
+  S05 (Task 9 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4; the world of
+  docs/superpowers/specs/2026-10-20-world-cadastre-design.md). A world scene on deck/shared/world (SCENE_BRIEF.md).
+  Starts exactly at S04's end (WorldStage "S04-end", camera full) and asks four questions, each anchored to the part
+  of the city it concerns: a spotlight (a frozen veil of --stage with a soft hole) leaves that region lit, its edge is
+  traced, and the question lands on it; the previous one recedes but stays.
+    s0  = S04's end, the new headline
+    s1  Is it still used?          the detached islands: Data connections and the containers land
+    s2  What belongs together?     the "?" in the river between Generators and Front ends
+    s3  Does it follow the rules?  the Apps islands (a check sweeps across them and finds nothing to read)
+    s4  Who owns it?               the stream districts of the Apps islands light up
+    s5  the deadpan: every district in sight gets the same owner, the same cog, at once:
+        "Owner: a technical account" · "Ops publishes to Production"
+  Colours only from THEME / the CSS variables of theme.js (qa/lint_colors.py). No numbers on screen besides the
+  world's own labels (truth.json via data.js).
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }                         /* WorldStage mounts the world here */
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -4px; color: var(--ink); }   /* ink from y 54, x 96 (-4: the F's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }      /* footnote band, clear of the icon */
+
+  /* the questions: the world's label grammar (a soft pool of the stage under the words, a tight halo), larger */
+  #qs { position: absolute; inset: 0; pointer-events: none; }
+  .qp { position: absolute; left: 0; top: 0; isolation: isolate; white-space: nowrap;
+    font-family: "Vodafone", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+    --q-plate: color-mix(in srgb, var(--stage) 88%, transparent);
+    text-shadow: 0 0 2px var(--stage), 0 0 4px var(--stage), 0 0 8px var(--stage); }
+  /* a near-opaque pool: the lit districts and coasts never show through a question (they are also knocked out
+     under it, see knock() below), and a receded question keeps a quiet ground through Teams compression */
+  .qp::before { content: ""; position: absolute; inset: -6px -16px; z-index: -1; border-radius: 20px;
+    background: var(--q-plate); box-shadow: 0 0 18px 10px var(--q-plate); }
+  /* day keeps the pool (unlike .w-label): a question that recedes on the lit land needs its ground */
+  [data-theme="day"] .qp { --q-plate: color-mix(in srgb, var(--stage) 90%, transparent); }
+  .qp-r { text-align: right; }
+  #q4::before { content: none; }   /* Q4 sits on clear ground (the open sea right of the headline): no pool */
+  .qq { font-size: 40px; line-height: 46px; font-weight: 700; color: var(--ink); }
+  .qs { font-size: 26px; line-height: 32px; font-weight: 400; color: var(--ink-dim); }
+  .qo { font-size: 32px; line-height: 42px; font-weight: 500; color: var(--ink); margin-top: 4px; }
+  .qo .gear { display: inline-block; width: 30px; height: 30px; vertical-align: -5px; margin: 0 2px; }
+  .qo .gear path { fill: var(--ink); }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <div id="qs">
+    <div class="qp" id="q1"><div class="qq">Is it still used?</div><div class="qs">files · containers · data connections</div></div>
+    <div class="qp" id="q2"><div class="qq">What belongs together?</div><div class="qs">which generator feeds which front end</div></div>
+    <div class="qp" id="q3"><div class="qq">Does it follow the rules?</div><div class="qs">PII data · security classification</div></div>
+    <div class="qp qp-r" id="q4"><div class="qq">Who owns it?</div>
+      <div class="qo" id="q4o">Owner: <svg class="gear" viewBox="-13 -13 26 26" aria-hidden="true"><path id="gearInline" fill-rule="evenodd"/></svg> a technical account</div>
+      <div class="qs" id="q4s">Ops publishes to Production</div></div>
+  </div>
+  <h1 class="scene-title" id="title">Four questions we couldn't answer</h1>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+const R = window.WorldRender, T = window.THEME, W = window.WORLD;
+gsap.registerPlugin(DrawSVGPlugin);
+document.querySelector("#icon").src = T.icon;
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dOf = (pts, close) => "M" + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" L") + (close ? " Z" : "");
+function edgeDist(pt, poly) {
+  let m = 1e9;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+    const u = Math.max(0, Math.min(1, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L));
+    m = Math.min(m, Math.hypot(a[0] + u * dx - pt[0], a[1] + u * dy - pt[1]));
+  }
+  return m;
+}
+// a cog (the technical account): n teeth around ro, body ri, a hole; one path, evenodd
+function gearD(cx, cy, ro, ri, n, hole) {
+  const pts = [], step = (Math.PI * 2) / n;
+  for (let i = 0; i < n; i++) {
+    const a = i * step - Math.PI / 2;
+    for (const [da, r] of [[-0.27, ri], [-0.15, ro], [0.15, ro], [0.27, ri]]) pts.push([cx + Math.cos(a + da * step) * r, cy + Math.sin(a + da * step) * r]);
+  }
+  const k = 0.5523 * hole;
+  return dOf(pts, true) + ` M${cx + hole},${cy} C${cx + hole},${cy + k} ${cx + k},${cy + hole} ${cx},${cy + hole}`
+    + ` C${cx - k},${cy + hole} ${cx - hole},${cy + k} ${cx - hole},${cy} C${cx - hole},${cy - k} ${cx - k},${cy - hole} ${cx},${cy - hole}`
+    + ` C${cx + k},${cy - hole} ${cx + hole},${cy - k} ${cx + hole},${cy} Z`;
+}
+
+(async () => {
+  const h = await WorldStage.mount($("#ws"), { state: "S04-end" });
+  const DIM = WorldStage.DIM;
+  await Promise.all(["400", "500", "700"].map((w) => document.fonts.load(`${w} 40px Vodafone`)));
+
+  // ---------------------------------------------------------------- the questions' places (stage px = world at full)
+  const q = h.q.__ink, qc = [(q[0] + q[2]) / 2, (q[1] + q[3]) / 2];          // the "?" in the river
+  const RING = 54;
+  const place = (el, x, y) => { el.style.left = x + "px"; el.style.top = y + "px"; };
+  // Q1 straddles the frontier between Data connections and the land, on the dark ground of both
+  place($("#q1"), 640, 798);
+  // Q2 on the east bank, its first line centred on the "?"
+  place($("#q2"), qc[0] + RING + 30, qc[1] - 23 - 4);
+  // Q3 on the Generators' south, its text edge at x 96 like the headline
+  place($("#q3"), 96, 612);
+  // Q4 in the open sea right of the headline, right edge at the 96 px margin, first baseline on the headline's
+  {
+    const el = $("#q4"), title = $("#title");
+    const base = (fs, fw, lh) => { const c = document.createElement("canvas").getContext("2d"); c.font = `${fw} ${fs}px Vodafone`;
+      const m = c.measureText("Hg"); return (lh - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent; };
+    const titleBase = title.offsetTop + base(64, 700, 70);
+    el.style.left = "auto"; el.style.right = "96px";
+    el.style.top = (titleBase - base(40, 700, 46)).toFixed(1) + "px";
+  }
+  $("#gearInline").setAttribute("d", gearD(0, 0, 12.5, 8.6, 8, 3.8));
+
+  // ---------------------------------------------------------------- spotlights: frozen veils with soft holes
+  const veil = (holes) => {
+    const r = h.rect, res = 1, cv = document.createElement("canvas");
+    cv.width = Math.round(r.w * res); cv.height = Math.round(r.h * res);
+    cv.style.cssText = `position:absolute;display:block;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
+    h.world.insertBefore(cv, h.svg);
+    const ctx = cv.getContext("2d");
+    ctx.fillStyle = T.rgb(T.stage); ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(res, 0, 0, res, -r.x * res, -r.y * res);
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.filter = "blur(9px)";
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    holes(ctx);
+    return cv;
+  };
+  const fillPolys = (ctx, polys, grow) => {
+    for (const p of polys) {
+      ctx.beginPath(); p.forEach((pt, i) => (i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1]))); ctx.closePath();
+      ctx.fillStyle = T.rgb(T.ink); ctx.fill();
+      if (grow) { ctx.lineWidth = grow; ctx.strokeStyle = T.rgb(T.ink); ctx.stroke(); }
+    }
+  };
+  const GEN = W.apps.generators.poly, FE = W.apps.frontends.poly;
+  const v1 = veil((c) => fillPolys(c, [W.conn.poly, W.land.poly], 14));
+  // Q2: a round pool centred a little below the "?", lighting only the two banks (the Apps islands' land) and the
+  // water inside the ring, fading out with the distance; on paper a lit bank is darker than the veil, so softer
+  const DAY = document.documentElement.dataset.theme === "day";
+  const v2 = veil((c) => {
+    const cx = qc[0], cy = qc[1] + 24, peak = DAY ? 0.78 : 1;
+    const gr = c.createRadialGradient(cx, cy, 40, cx, cy, 300);
+    gr.addColorStop(0, T.rgba(T.ink, peak)); gr.addColorStop(0.4, T.rgba(T.ink, peak * 0.85));
+    gr.addColorStop(0.75, T.rgba(T.ink, peak * 0.3)); gr.addColorStop(1, T.rgba(T.ink, 0));
+    c.fillStyle = gr;
+    c.beginPath();
+    for (const p of [GEN, FE]) { p.forEach((pt, i) => (i ? c.lineTo(pt[0], pt[1]) : c.moveTo(pt[0], pt[1]))); c.closePath(); }
+    c.fill();
+    c.beginPath(); c.arc(qc[0], qc[1], RING + 14, 0, Math.PI * 2); c.fill();
+  });
+  const v3 = veil((c) => fillPolys(c, [GEN, FE], 14));
+  const [V1, V2, V3] = await R.freeze([v1, v2, v3]);
+  gsap.set([V1, V2, V3], { autoAlpha: 0 });
+
+  // ---------------------------------------------------------------- the boxes the marks keep clear of (stage px)
+  const qBox = (s, px, py) => { const e = $(s); return [e.offsetLeft - px, e.offsetTop - py, e.offsetLeft + e.offsetWidth + px, e.offsetTop + e.offsetHeight + py]; };
+  const labelBoxes = [];   // [id, box] of every base name, its text box
+  for (const el of h.labels.values()) {
+    const L = el.__L, w = el.offsetWidth, ht = el.offsetHeight, x = L.at[0] - L.ax * w, y = L.at[1] - L.ay * ht;
+    labelBoxes.push([el.dataset.label, [x, y, x + w, y + ht]]);
+  }
+  const grow = (b, px, py) => [b[0] - px, b[1] - py, b[2] + px, b[3] + py];
+
+  // ---------------------------------------------------------------- marks on the map (world units, above the layers)
+  // the traced coasts and the lit district borders break, with round ends, before every question plate and every base
+  // name: a map's lines never run through its words (cut in the geometry: an SVG mask did it softly but cost 50 ms
+  // frames whenever anything else in the overlay moved)
+  const holes = ["#q1", "#q2", "#q3"].map((s) => qBox(s, 24, 14))
+    .concat(labelBoxes.filter(([id]) => id !== "q").map(([, b]) => grow(b, 10, 3)));
+  const inHole = (p) => holes.some((b) => p[0] > b[0] && p[0] < b[2] && p[1] > b[1] && p[1] < b[3]);
+  const cutD = (poly) => {
+    const pts = [];   // the closed ring densified to <= 3 px steps; v = an original vertex
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length], k = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+      for (let j = 0; j < k; j++) pts.push({ x: a[0] + ((b[0] - a[0]) * j) / k, y: a[1] + ((b[1] - a[1]) * j) / k, v: j === 0 });
+    }
+    pts.push({ ...pts[0], v: true });
+    let d = "", open = false;
+    pts.forEach((q, i) => {
+      if (inHole([q.x, q.y])) { open = false; return; }
+      const next = pts[i + 1], last = !next || inHole([next.x, next.y]);
+      if (!open) { d += `M${q.x.toFixed(1)},${q.y.toFixed(1)}`; open = true; }
+      else if (q.v || last) d += `L${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+    });
+    return d;
+  };
+  const G = svgEl("g", { "data-layer": "s05" }, h.svg);
+  const defs = svgEl("defs", {}, G);
+  const trace = (polys, w = 2) => {
+    const g = svgEl("g", {}, G), paths = [];
+    for (const p of polys) {
+      const d = cutD(p);
+      svgEl("path", { d, fill: "none", stroke: T.rgba(T.ink, 0.07), "stroke-width": w + 5, "stroke-linejoin": "round", "stroke-linecap": "round" }, g);
+      paths.push(svgEl("path", { d, fill: "none", stroke: T.rgba(T.ink, 0.8), "stroke-width": w, "stroke-linejoin": "round", "stroke-linecap": "round" }, g));
+    }
+    return { g, paths, glows: [...g.querySelectorAll("path")].filter((x) => !paths.includes(x)) };
+  };
+  const t1 = trace([W.conn.poly, W.land.poly]);
+  const t3 = trace([GEN, FE]);
+  // Q2: a ring round the "?" and one ping
+  const g2 = svgEl("g", {}, G);
+  const ring = svgEl("circle", { cx: qc[0], cy: qc[1], r: RING, fill: "none", stroke: T.rgba(T.ink, 0.92), "stroke-width": 2.5 }, g2);
+  const ping = svgEl("circle", { cx: qc[0], cy: qc[1], r: RING, fill: "none", stroke: T.rgba(T.ink, 0.5), "stroke-width": 2 }, g2);
+  // Q3: a check sweeps west to east across the Apps islands, clipped to them
+  const clip = svgEl("clipPath", { id: "s05-apps" }, defs);
+  svgEl("path", { d: dOf(GEN, true) + " " + dOf(FE, true) }, clip);
+  const lg = svgEl("linearGradient", { id: "s05-sweep", x1: "0", x2: "1", y1: "0", y2: "0" }, defs);
+  for (const [o, a] of [[0, 0], [0.7, 0.16], [0.96, 0.34], [1, 0]]) svgEl("stop", { offset: o, "stop-color": T.rgb(T.ink), "stop-opacity": a }, lg);
+  const sweepG = svgEl("g", { "clip-path": "url(#s05-apps)" }, G);
+  const sweep = svgEl("rect", { x: 0, y: 180, width: 260, height: 600, fill: "url(#s05-sweep)" }, sweepG);
+  // Q4: every stream district's border, then the same cog on every district (a district wholly under a question's
+  // words keeps no border to draw)
+  const districts = [...W.apps.generators.streams, ...W.apps.frontends.streams];
+  const t4 = svgEl("g", {}, G);
+  const lined = districts.map((s) => [s, cutD(s.poly)]).filter(([, d]) => d);
+  const dPaths = lined.map(([, d]) => svgEl("path", { d, fill: "none", stroke: T.rgba(T.ink, 0.85), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, t4));
+  const dDelay = lined.map(([s]) => (R.centroid(s.poly)[0] - 120) / (1725 - 120));
+  // where each cog sits: in its own district, clear of the question plates' whole soft pool (so every cog is the same
+  // bright mark), of the ring, and of the names; tried in order: the world's owner spot, the centroid, the parcel
+  // centres, then a 6 px grid over the district, each nearest the centroid first. A district lying wholly under a
+  // question's pool (4) gets its cog on the pool, clear of the words, in a layer above the plates (#s05-top: the
+  // camera never moves in S05, so world units are stage px). The 6 districts lying wholly under the words of Q2 and
+  // Q3 show none: 53 cogs on the 59 districts (window.__s05 reports both).
+  const pools = ["#q1", "#q2", "#q3", "#q4"].map((s) => qBox(s, 50, 42));
+  const words = ["#q1", "#q2", "#q3", "#q4"].map((s) => qBox(s, 30, 24));
+  const others = [[qc[0] - RING - 20, qc[1] - RING - 20, qc[0] + RING + 20, qc[1] + RING + 20]];
+  const roomy = [];   // the names with more air, tried first (a cog touching "Front ends" reads as its icon)
+  for (const [id, b] of labelBoxes) {
+    const big = id === "generators" || id === "frontends";
+    others.push(big ? grow(b, 44, 28) : grow(b, 34, 26));
+    roomy.push(big ? grow(b, 84, 46) : grow(b, 56, 40));
+  }
+  const inBox = (p, list) => list.some((b) => p[0] > b[0] && p[0] < b[2] && p[1] > b[1] && p[1] < b[3]);
+  const clear = (p) => !inBox(p, pools) && !inBox(p, others), airy = (p) => clear(p) && !inBox(p, roomy);
+  const onPool = (p) => !inBox(p, words) && !inBox(p, others);
+  const top = svgEl("svg", { id: "s05-top", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, $("#stage"));
+  top.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  $("#stage").insertBefore(top, $("#title"));
+  const cogs = svgEl("g", {}, G), cogsTop = svgEl("g", {}, top), cogEls = [], placed = [], missing = [];
+  const spaced = (p) => placed.every((o) => Math.hypot(o[0] - p[0], o[1] - p[1]) >= 50);
+  for (const key of ["generators", "frontends"]) {
+    W.apps[key].streams.forEach((s, si) => {
+      const c = R.centroid(s.poly), own = h.owners.get(s.id), d2c = (a) => Math.hypot(a[0] - c[0], a[1] - c[1]);
+      const xs = s.poly.map((p) => p[0]), ys = s.poly.map((p) => p[1]), grid = [];
+      for (let x = Math.min(...xs); x <= Math.max(...xs); x += 6) for (let y = Math.min(...ys); y <= Math.max(...ys); y += 6) grid.push([x, y]);
+      const cand = [own ? own.at : c, c]
+        .concat(W.apps[key].parcels.filter((p) => p.s === si).map((p) => p.c).sort((a, b) => d2c(a) - d2c(b)))
+        .concat(grid.sort((a, b) => d2c(a) - d2c(b)))
+        .filter((p) => R.inside(p, s.poly));
+      const deep = (p, e) => edgeDist(p, s.poly) >= e;
+      let layer = cogs;
+      let at = cand.find((p) => deep(p, 14) && airy(p) && spaced(p))
+        || cand.find((p) => deep(p, 14) && clear(p) && spaced(p))
+        || cand.find((p) => deep(p, 14) && airy(p))
+        || cand.find((p) => deep(p, 10) && clear(p));
+      if (!at) {
+        layer = cogsTop;
+        at = cand.find((p) => deep(p, 12) && onPool(p) && spaced(p)) || cand.find((p) => deep(p, 8) && onPool(p)) || cand.find(onPool);
+      }
+      if (!at) { missing.push(s.id); return; }   // under a question's words
+      placed.push(at);
+      const gg = svgEl("g", {}, layer);
+      svgEl("path", { d: gearD(at[0], at[1], 12.5, 8.6, 8, 3.8), "fill-rule": "evenodd", fill: T.rgb(T.ink), stroke: T.rgba(T.stage, 0.9), "stroke-width": 2, "paint-order": "stroke" }, gg);
+      cogEls.push({ g: gg, at, top: layer === cogsTop });
+    });
+  }
+  window.__s05 = { districts: districts.length, cogs: cogEls.length, onPool: cogEls.filter((c) => c.top).length, missing };
+
+  // ---------------------------------------------------------------- s0: S04's end, nothing of S05 yet
+  const LBL = (id) => h.labels.get(id);
+  const allLabels = [...h.labels.values()];
+  const qp = ["#q1", "#q2", "#q3", "#q4"].map($);
+  gsap.set(qp, { autoAlpha: 0 });
+  gsap.set([$("#q4o"), $("#q4s")], { autoAlpha: 0 });
+  gsap.set([t1.g, g2, t4, cogs, cogsTop, sweepG], { autoAlpha: 0 });
+  gsap.set(t3.g, { autoAlpha: 0 });
+  gsap.set([...t1.paths, ...t3.paths, ...dPaths, ring], { drawSVG: "0%" });
+  gsap.set([...t1.glows, ...t3.glows], { autoAlpha: 0 });
+  gsap.set(ping, { autoAlpha: 0 });
+  cogEls.forEach((c) => gsap.set(c.g, { scale: 0, svgOrigin: `${c.at[0]} ${c.at[1]}` }));
+  gsap.set(sweep, { x: -300 });
+
+  // which base labels stay full at each question (the rest recede under the veil)
+  const keep = {
+    1: ["connections", "containers", "terr-On-prem", "terr-GCP", "terr-AWS"],
+    2: ["q", "generators", "frontends"],
+    3: ["apps", "generators", "frontends"],
+  };
+  const focusLabels = (step, at) => {
+    const k = keep[step];
+    for (const el of allLabels) {
+      const id = el.dataset.label;
+      const a = k.includes(id) ? 1 : id === "q" ? 0.5 : 0.32;
+      tl.to(el, { autoAlpha: a, duration: 0.6, ease: R.MOTION.light }, at);
+    }
+  };
+  // a question that recedes keeps its pool (text on the lit map needs it): only the words dim
+  const recede = (el, at) => tl.to(el.querySelectorAll(".qq, .qs"), { opacity: 0.62, duration: 0.6, ease: R.MOTION.light }, at);
+  const rise = (el, at) => tl.fromTo(el, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: R.MOTION.rise, immediateRender: false }, at);
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+
+  // ---- s1 · Is it still used? the detached islands
+  tl.to(V1, { autoAlpha: DIM, duration: 0.8, ease: R.MOTION.light }, "s0");
+  tl.to(h.layers.known, { autoAlpha: 0.35, duration: 0.8, ease: R.MOTION.light }, "s0");   // the quiet bridges and port recede too
+  focusLabels(1, "s0");
+  tl.set(t1.g, { autoAlpha: 1 }, "s0+=0.3");
+  tl.to(t1.paths, { drawSVG: "100%", duration: 1.3, ease: R.MOTION.travel, stagger: 0.15 }, "s0+=0.3");
+  tl.to(t1.glows, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s0+=1.2");
+  rise(qp[0], "s0+=0.9");
+  tl.addLabel("s1");
+
+  // ---- s2 · What belongs together? the "?" in the river
+  tl.to(V1, { autoAlpha: 0, duration: 0.8, ease: R.MOTION.light }, "s1");
+  tl.to(V2, { autoAlpha: DIM, duration: 0.8, ease: R.MOTION.light }, "s1");
+  tl.to(t1.g, { autoAlpha: 0, duration: 0.6, ease: R.MOTION.light }, "s1");
+  recede(qp[0], "s1");
+  focusLabels(2, "s1");
+  tl.set(g2, { autoAlpha: 1 }, "s1+=0.3");
+  tl.to(ring, { drawSVG: "100%", duration: 0.8, ease: R.MOTION.travel }, "s1+=0.3");
+  tl.fromTo(ping, { autoAlpha: 0.9, attr: { r: RING } }, { autoAlpha: 0, attr: { r: RING * 1.9 }, duration: 1.0, ease: R.MOTION.lift, immediateRender: false }, "s1+=0.9");
+  rise(qp[1], "s1+=0.8");
+  tl.addLabel("s2");
+
+  // ---- s3 · Does it follow the rules? the Apps islands, a check sweeps across them
+  tl.to(V2, { autoAlpha: 0, duration: 0.8, ease: R.MOTION.light }, "s2");
+  tl.to(V3, { autoAlpha: DIM, duration: 0.8, ease: R.MOTION.light }, "s2");
+  tl.to(ring, { autoAlpha: 0.5, duration: 0.6, ease: R.MOTION.light }, "s2");
+  recede(qp[1], "s2");
+  focusLabels(3, "s2");
+  tl.set(t3.g, { autoAlpha: 1 }, "s2+=0.3");
+  tl.to(t3.paths, { drawSVG: "100%", duration: 1.3, ease: R.MOTION.travel, stagger: 0.15 }, "s2+=0.3");
+  tl.to(t3.glows, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s2+=1.2");
+  tl.set(sweepG, { autoAlpha: 1 }, "s2+=0.4");
+  tl.fromTo(sweep, { x: -300 }, { x: 1760, duration: 1.8, ease: R.MOTION.beam, immediateRender: false }, "s2+=0.4");
+  tl.set(sweepG, { autoAlpha: 0 }, "s2+=2.2");
+  rise(qp[2], "s2+=0.9");
+  tl.addLabel("s3");
+
+  // ---- s4 · Who owns it? the stream districts light up, west to east
+  recede(qp[2], "s3");
+  tl.to(t3.g, { autoAlpha: 0.35, duration: 0.6, ease: R.MOTION.light }, "s3");
+  tl.set(t4, { autoAlpha: 1 }, "s3");
+  dPaths.forEach((p, i) => tl.to(p, { drawSVG: "100%", duration: 0.55, ease: R.MOTION.mark }, `s3+=${(0.1 + dDelay[i] * 0.9).toFixed(3)}`));
+  rise(qp[3], "s3+=0.5");
+  tl.addLabel("s4");
+
+  // ---- s5 · the deadpan: the same cog on every district, at once; then whose it is
+  tl.to(t4, { autoAlpha: 0.55, duration: 0.4, ease: R.MOTION.light }, "s4");
+  tl.to(cogEls.map((c) => c.g), { scale: 1, duration: 0.22, ease: "power2.out" }, "s4+=0.1");
+  tl.set([cogs, cogsTop], { autoAlpha: 1 }, "s4+=0.1");
+  tl.fromTo($("#q4o"), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: R.MOTION.rise, immediateRender: false }, "s4+=0.7");
+  tl.fromTo($("#q4s"), { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.5, ease: R.MOTION.rise, immediateRender: false }, "s4+=0.95");
+  tl.addLabel("s5");
+
+  await $("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3", "s4", "s5"]);
+})();
+</script>
+</body>
+</html>

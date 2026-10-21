@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>S15 · Does it follow the rules?</title>
+<!--
+  S15 (Task 11 of docs/plans/2026-10-20-night-map-deck.md; storyboard v4 S15; world spec §3-§4: 83 app parcels
+  marked --review; the check reads the variables in the reload log, not Metadata).
+  Numbers from foundation/truth.json: template.apps_not_following = 83 (asserted below). Which parcels are the 83 is
+  illustrative (seeded, R.mulberry32); the count is real.
+    s0  S14's ground: camera apps, the city in "S09-end" stepped back (dim; owner marks hidden, as at every
+        zoom > 1), only Generators and Front ends named, the icon's corner cleared (a --stage band from y 890)
+    s1  the city steps forward (the veil lifts, the Auditor's islands are named); the control: "Template check ·
+        PII data · security classification", a gate of light standing at the Generators' west coast
+    s2  the diary lights (Reloads); the gate sweeps west -> east across both Apps islands, app by app: each parcel
+        it reads flashes in its light; 83 lose their light and are outlined --review as it passes, and the count
+        beside "apps in Production skip the template" follows them one by one
+    s3  "we get a list": the city dims under the 83, which keep their outline and take a glow
+  End = camera apps (the contract's S15 cam), so S16 (apps -> stream) starts where this ends.
+-->
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/world/world.css">
+<script src="../shared/world/theme.js"></script>
+<script src="../shared/world/data.js"></script>
+<style>
+  body.scene { background: var(--stage); color: var(--ink); }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--stage); }
+  #ws { position: absolute; inset: 0; }
+  .scene-title { left: 96px; top: 41px; line-height: 70px; margin-left: -4px; color: var(--ink); }   /* ink from y 54, x 96 (-4: the D's side bearing) */
+  #note { position: absolute; right: 184px; top: 1012px; }
+  .txt { position: absolute; font-family: "Vodafone", system-ui, sans-serif; white-space: nowrap;
+    -webkit-font-smoothing: antialiased; font-variant-numeric: lining-nums tabular-nums; }
+  /* the control, under the headline (open sea at camera apps: the islands start at y 290) */
+  #tmpl { left: 96px; top: 150px; }
+  #tmpl .t1 { display: flex; align-items: center; gap: 14px; font-size: 32px; line-height: 40px; font-weight: 700; color: var(--ink); }
+  #tmpl .bar { width: 5px; height: 30px; border-radius: 3px; background: var(--in-use); flex: none; }
+  #tmpl .t2 { margin-left: 19px; font-size: 30px; line-height: 38px; font-weight: 400; color: var(--ink-dim); }
+  #tmpl .t3 { margin-left: 19px; margin-top: 4px; font-size: 26px; line-height: 32px; font-weight: 400; color: var(--ink-faint); }
+  /* the count, top right, right edge on the 96 px margin */
+  /* top 35: the "83" cap top meets the headline's ink (y 54, since the headlines moved up 15 px on 2026-10-21);
+     .cap +4: its baseline stays on "Template check"'s (y 180) */
+  #count { right: 96px; top: 35px; text-align: right; }
+  #count .row { display: flex; align-items: center; justify-content: flex-end; gap: 22px; }
+  #count .num { font-size: 112px; line-height: 112px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  #count .cap { margin-top: 4px; font-size: 30px; line-height: 38px; font-weight: 400; color: var(--ink-dim); }
+  #count .cap b { color: var(--ink); font-weight: 700; }
+  #count svg { display: block; flex: none; overflow: visible; }
+  .g-review { fill: color-mix(in srgb, var(--stage) 55%, transparent); stroke: var(--review); stroke-width: 4; stroke-linejoin: round; }
+  /* the gate of light (screen space, between the world and the labels) */
+  #gate { position: absolute; left: 0; top: 0; pointer-events: none; }
+  /* the veil of s3 lives in world units, under the 83 marks */
+  .s15-veil { position: absolute; background: var(--stage); pointer-events: none; }
+</style>
+</head>
+<body class="scene">
+<div id="stage">
+  <div id="ws"></div>
+  <h1 class="scene-title">Does it follow the rules?</h1>
+  <div id="tmpl" class="txt">
+    <div class="t1"><span class="bar"></span>Template check</div>
+    <div class="t2">PII data · security classification</div>
+    <div class="t3">declared as variables in the reload logs · checked app by app</div>
+  </div>
+  <div id="count" class="txt">
+    <div class="row"><svg width="44" height="40" viewBox="0 0 44 40"><path class="g-review" d="M4,6 L39,3 L40,35 L5,37 Z"/></svg><span class="num" id="n83">83</span></div>
+    <div class="cap"><b>apps in Production</b> skip the template</div>
+  </div>
+  <div id="note" class="w-note">Illustrative layout · real counts</div>
+  <img class="vf-icon" id="icon" alt="Vodafone">
+</div>
+<script src="../shared/vendor/gsap.min.js"></script>
+<script src="../shared/vendor/DrawSVGPlugin.min.js"></script>
+<script src="../shared/scene-runtime.js"></script>
+<script src="../shared/world/world.js"></script>
+<script src="../shared/world/stage.js"></script>
+<script>
+gsap.registerPlugin(DrawSVGPlugin);
+const R = window.WorldRender, T = window.THEME, W = window.WORLD, TR = window.TRUTH;
+const NS = "http://www.w3.org/2000/svg";
+document.querySelector("#icon").src = T.icon;
+
+// the count, from truth.json (asserted: a changed truth.json must not leave this scene showing an old number)
+const N = 83;
+if (TR && TR.template && TR.template.apps_not_following !== N) throw new Error("s15: the count no longer matches foundation/truth.json");
+
+function svgEl(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; }
+const dOf = (poly) => "M" + poly.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" L") + " Z";
+function perim(poly) { let s = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; s += Math.hypot(q[0] - p[0], q[1] - p[1]); } return s; }
+const girth = (poly) => 2 * R.area(poly) / (perim(poly) || 1);
+// a polygon moved inward by d (S12's: each edge offset, consecutive offset lines intersected; parcels are near convex)
+function inset(poly, d) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a += p[0] * q[1] - q[0] * p[1]; }
+  const s = a > 0 ? 1 : -1, n = poly.length, lines = [];
+  for (let i = 0; i < n; i++) {
+    const p = poly[i], q = poly[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L * s, ny = dx / L * s;
+    lines.push([[p[0] + nx * d, p[1] + ny * d], [dx, dy], [nx, ny]]);
+  }
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const [p1, d1, n1] = lines[(i + n - 1) % n], [p2, d2, n2] = lines[i], v = poly[i];
+    const den = d1[0] * d2[1] - d1[1] * d2[0];
+    let q = null;
+    if (Math.abs(den) > 1e-6) {
+      const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
+      q = [p1[0] + d1[0] * t, p1[1] + d1[1] * t];
+    }
+    if (!q || Math.hypot(q[0] - v[0], q[1] - v[1]) > 2.5 * d) {
+      const mx = n1[0] + n2[0], my = n1[1] + n2[1], L = Math.hypot(mx, my) || 1;
+      q = [v[0] + mx / L * d, v[1] + my / L * d];
+    }
+    out.push(q);
+  }
+  return out;
+}
+function segDist(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+  const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L));
+  return Math.hypot(a[0] + u * dx - p[0], a[1] + u * dy - p[1]);
+}
+
+(async () => {
+  // S14 ends on the Apps pair; S15 rests there throughout, in the world state every scene after S09 shows
+  const h = await WorldStage.mount(document.querySelector("#ws"), { cam: "apps", state: "S09-end" });
+  // s0 = S14's end: the city stepped back (dim), only Generators and Front ends named; s1 lifts both
+  h.setState("dim");
+  gsap.set(h.layers.owners, { autoAlpha: 0 });               // world units: hidden at zoom > 1 (brief §3)
+  const KEEP = ["generators", "frontends", "reloads", "sessions", "telemetry", "metadata"];
+  const AUD = ["reloads", "sessions", "telemetry", "metadata"];
+  for (const [id, el] of h.labels) if (!KEEP.includes(id) || AUD.includes(id)) gsap.set(el, { autoAlpha: 0 });
+  const V = R.camera("apps");                                 // screen = V.x/V.y + V.scale * world
+  const toScreenX = (wx) => V.x + V.scale * wx;
+
+  // ---- the label plates at this camera (world units): no mark hides under a name
+  const plates = [];
+  for (const id of KEEP) {
+    const el = h.labels.get(id), L = el.__L, w = el.offsetWidth, ht = el.offsetHeight;
+    const sx = V.x + V.scale * L.at[0] - L.ax * w, sy = V.y + V.scale * L.at[1] - L.ay * ht;
+    plates.push([(sx - 24 - V.x) / V.scale, (sy - 14 - V.y) / V.scale, (sx + w + 24 - V.x) / V.scale, (sy + ht + 14 - V.y) / V.scale]);
+  }
+  // ...nor on a bridge or a port (a ring there would read as part of the link)
+  const links = [W.bridges.gf, ...W.bridges.needed, ...W.bridges.known].map((b) => R.quad(b.a, b.c || b.q, b.b, 16));
+  const clearOf = (c) => !plates.some((b) => c[0] > b[0] && c[0] < b[2] && c[1] > b[1] && c[1] < b[3])
+    && W.ports.every((p) => Math.hypot(c[0] - p.at[0], c[1] - p.at[1]) > 46)
+    && links.every((pts) => pts.every((p, i) => i === 0 || segDist(c, pts[i - 1], p) > 20));
+
+  // ---- which 83: illustrative, seeded; parcels big enough for their outline to read at 720p, spread over the pair
+  const apps = [...W.apps.generators.parcels, ...W.apps.frontends.parcels];
+  const rnd = R.mulberry32(1583);
+  const pool = apps.filter((pc) => girth(pc.p) >= 5.6 && clearOf(pc.c)).map((pc) => [rnd(), pc]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const marked = [];
+  for (const pc of pool) {
+    if (marked.length === N) break;
+    if (marked.every((m) => Math.hypot(m.c[0] - pc.c[0], m.c[1] - pc.c[1]) >= 34)) marked.push(pc);
+  }
+  if (marked.length !== N) throw new Error("s15: could not place the 83 marks");
+  const isMarked = new Set(marked.map((m) => m.id));
+
+  // ---- the gate's path (screen x) and the time it reaches a world x
+  const X0 = 100, X1 = 1832, SWEEP = 3.6;
+  const reach = (wx) => Math.max(0, Math.min(1, (toScreenX(wx) - X0) / (X1 - X0))) * SWEEP;
+
+  // ---- the wake: the parcels the gate reads flash in its light, in vertical buckets so they flash in order
+  const BW = 18 / V.scale, wx0 = (X0 - V.x) / V.scale, buckets = new Map();
+  for (const pc of apps) {
+    if (isMarked.has(pc.id)) continue;
+    const k = Math.floor((pc.c[0] - wx0) / BW);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(pc);
+  }
+  const wres = 2, wakeCv = [], wakeKeys = [...buckets.keys()].sort((a, b) => a - b);
+  const sh = R.mulberry32(77);
+  for (const k of wakeKeys) {
+    const list = buckets.get(k);
+    let b = [1e9, 1e9, -1e9, -1e9];
+    for (const pc of list) { const q = R.bb(pc.p); b = [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[2]), Math.max(b[3], q[3])]; }
+    const rect = { x: Math.floor(b[0]) - 2, y: Math.floor(b[1]) - 2, w: Math.ceil(b[2] - b[0]) + 4, h: Math.ceil(b[3] - b[1]) + 4 };
+    const cv = document.createElement("canvas");
+    cv.width = rect.w * wres; cv.height = rect.h * wres; cv.className = "s15-wake";
+    cv.style.cssText = `position:absolute;left:${rect.x}px;top:${rect.y}px;width:${rect.w}px;height:${rect.h}px`;
+    const g = cv.getContext("2d");
+    g.setTransform(wres, 0, 0, wres, -rect.x * wres, -rect.y * wres);
+    for (const pc of list) { R.path(g, pc.p); g.fillStyle = T.rgba(T.inUse, 0.34 + 0.32 * sh()); g.fill(); }
+    h.world.insertBefore(cv, h.svg);
+    wakeCv.push(cv);
+  }
+
+  // ---- the diary: the Reloads island lit in the gate's light while the check reads it
+  const RL = W.islands.reloads, rb = R.bb(RL.poly);
+  const rRect = { x: Math.floor(rb[0]) - 40, y: Math.floor(rb[1]) - 40, w: Math.ceil(rb[2] - rb[0]) + 80, h: Math.ceil(rb[3] - rb[1]) + 80 };
+  const rc = document.createElement("canvas");
+  rc.width = rRect.w * 2; rc.height = rRect.h * 2; rc.className = "s15-diary";
+  rc.style.cssText = `position:absolute;left:${rRect.x}px;top:${rRect.y}px;width:${rRect.w}px;height:${rRect.h}px`;
+  {
+    const g = rc.getContext("2d"), r2 = R.mulberry32(91);
+    g.save(); g.setTransform(2, 0, 0, 2, -rRect.x * 2, -rRect.y * 2);
+    for (const pc of RL.parcels) { R.path(g, pc.p); g.fillStyle = T.rgba(T.inUse, 0.24 + 0.26 * r2()); g.fill(); }
+    g.restore();
+    R.bloomCells(g, RL.parcels.map((pc) => pc.p), T.inUse, 0.6, 14, rRect, 2);
+  }
+  h.world.insertBefore(rc, h.svg);
+
+  // ---- s3's veil (world units, above the city and its bridges, under the 83)
+  const veil = document.createElement("div");
+  veil.className = "s15-veil";
+  veil.style.cssText = `left:${h.rect.x}px;top:${h.rect.y}px;width:${h.rect.w}px;height:${h.rect.h}px`;
+  h.world.appendChild(veil);
+
+  // ---- the glow of the 83 (frozen), over the veil
+  const ab = [Math.min(R.bb(W.apps.generators.poly)[0], R.bb(W.apps.frontends.poly)[0]), Math.min(R.bb(W.apps.generators.poly)[1], R.bb(W.apps.frontends.poly)[1]),
+    Math.max(R.bb(W.apps.generators.poly)[2], R.bb(W.apps.frontends.poly)[2]), Math.max(R.bb(W.apps.generators.poly)[3], R.bb(W.apps.frontends.poly)[3])];
+  const bRect = { x: Math.floor(ab[0]) - 40, y: Math.floor(ab[1]) - 40, w: Math.ceil(ab[2] - ab[0]) + 80, h: Math.ceil(ab[3] - ab[1]) + 80 };
+  const bc = document.createElement("canvas");
+  bc.width = bRect.w * 2; bc.height = bRect.h * 2; bc.className = "s15-bloom";
+  bc.style.cssText = `position:absolute;left:${bRect.x}px;top:${bRect.y}px;width:${bRect.w}px;height:${bRect.h}px`;
+  R.bloomCells(bc.getContext("2d"), marked.map((m) => m.p), T.review, 1.4, 10, bRect, 2);
+  h.world.appendChild(bc);
+
+  // ---- the gate of light (screen space): a hot core in the check's light, a long soft trail behind it
+  const GW = 220, GH = 660, GTOP = 262, GCX = 180, gres = 2;   // GCX: the core's x inside the image
+  const gc = document.createElement("canvas");
+  gc.id = "gate"; gc.width = GW * gres; gc.height = GH * gres;
+  gc.style.cssText = `position:absolute;left:0;top:0;width:${GW}px;height:${GH}px;pointer-events:none`;
+  {
+    const g = gc.getContext("2d"), w = gc.width, ht = gc.height, id = g.createImageData(w, ht), d = id.data;
+    const [cr, cg, cb] = T.channels(T.inUse), r = R.mulberry32(262);
+    const sm = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+    for (let y = 0; y < ht; y++) {
+      const v = y / ht, env = sm(v / 0.14) * sm((1 - v) / 0.14);
+      for (let x = 0; x < w; x++) {
+        const dx = x / gres - GCX;
+        const core = Math.exp(-((dx / 1.6) ** 2));
+        const lead = dx > 0 ? Math.exp(-((dx / 9) ** 2)) * 0.5 : 0;
+        const trail = dx <= 0 ? 0.5 * Math.exp(-((dx / 10) ** 2)) + 0.2 * Math.exp(-((dx / 70) ** 2)) : 0;
+        const a = Math.min(1, core + lead + trail) * env;
+        const i = (y * w + x) * 4;
+        d[i] = cr; d[i + 1] = cg; d[i + 2] = cb;
+        d[i + 3] = Math.max(0, Math.min(255, Math.round(a * 255 + (r() - 0.5) * 2)));
+      }
+    }
+    g.putImageData(id, 0, 0);
+  }
+  document.querySelector("#ws").insertBefore(gc, h.veil);
+
+  // ---- clear ground for the icon and the note (camera apps puts the containers land under both), as S14 does:
+  // the stage colour ramps in from y 890 (under the Generators' south coast, y ~880) to full by y 960 (the icon
+  // starts at 952); a canvas with a +-1 dither (a CSS gradient this dark bands on the GPU), frozen, above the gate
+  const FB0 = 870, fbc = document.createElement("canvas");
+  fbc.width = 1920; fbc.height = 1080 - FB0; fbc.className = "s15-ground";
+  fbc.style.cssText = `position:absolute;left:0;top:${FB0}px;width:1920px;height:${1080 - FB0}px;pointer-events:none`;
+  h.container.insertBefore(fbc, h.labelsEl);
+  {
+    const g = fbc.getContext("2d"), id = g.createImageData(fbc.width, fbc.height), d = id.data, rnd = R.mulberry32(1515);
+    const [sr, sg, sb] = T.channels(T.stage);
+    for (let y = 0; y < fbc.height; y++) {
+      const u = Math.min(1, Math.max(0, (FB0 + y - 890) / 70)), a = u * u * (3 - 2 * u) * 0.97 * 255;
+      for (let x = 0; x < fbc.width; x++) {
+        const i = (y * fbc.width + x) * 4;
+        d[i] = sr; d[i + 1] = sg; d[i + 2] = sb; d[i + 3] = Math.max(0, Math.min(255, a + (rnd() - 0.5) * 2));
+      }
+    }
+    g.putImageData(id, 0, 0);
+  }
+
+  const frozen = await R.freeze([...wakeCv, rc, bc, gc, fbc]);
+  const wake = frozen.slice(0, wakeCv.length), [diary, bloom, gate] = frozen.slice(wakeCv.length);
+  gsap.set([...wake, diary, bloom, veil], { autoAlpha: 0 });
+
+  // ---- the 83 marks (their own SVG in world units, above the veil): the parcel loses its light and is outlined
+  const ms = svgEl("svg", { class: "s15-marks", width: 1920, height: 1080, viewBox: "0 0 1920 1080" }, h.world);
+  ms.style.cssText = "position:absolute;left:0;top:0;overflow:visible;pointer-events:none";
+  // day (plan B): a paper-light parcel inside a hairline vanished on the pale land, so there the parcel takes a
+  // light --review tint and a heavier outline
+  const DAY = T.name === "day";
+  const marks = marked.map((pc) => {
+    const g = svgEl("g", { "data-mark": pc.id }, ms);
+    const dark = svgEl("path", { d: dOf(pc.p), fill: DAY ? T.rgba(T.review, 0.2) : T.rgba(T.sea, 0.72) }, g);
+    const ring = svgEl("path", { d: dOf(inset(pc.p, DAY ? 1.7 : 1.3)), fill: "none", stroke: T.rgb(T.review), "stroke-width": DAY ? 3.4 : 2.6, "stroke-linejoin": "round" }, g);
+    return { pc, dark, ring, at: reach(pc.c[0]) };
+  }).sort((a, b) => a.at - b.at);
+  gsap.set(marks.map((m) => m.dark), { autoAlpha: 0 });
+  gsap.set(marks.map((m) => m.ring), { autoAlpha: 0, drawSVG: "0%" });
+
+  // ---- the bright twin of the Reloads label (the diary is what the check reads)
+  const rl = h.labels.get("reloads");
+  const rl2 = document.createElement("div");
+  rl2.className = "w-at w-label"; rl2.textContent = rl.textContent; rl2.style.transform = rl.style.transform;
+  h.labelsEl.appendChild(rl2);
+  gsap.set(rl2, { autoAlpha: 0 });
+
+  // ---- text
+  const t1 = document.querySelector("#tmpl .t1"), t2 = document.querySelector("#tmpl .t2"), t3 = document.querySelector("#tmpl .t3");
+  const count = document.querySelector("#count"), num = document.querySelector("#n83");
+  gsap.set([t1, t2, t3, count], { autoAlpha: 0, y: 14 });
+  num.textContent = "0";
+  const rise = (tl, el, at) => tl.to(el, { autoAlpha: 1, y: 0, duration: 0.7, ease: R.MOTION.rise }, at);
+  const gateY = GTOP;
+  gsap.set(gate, { x: X0 - GCX, y: gateY, autoAlpha: 0, scaleY: 0.2, transformOrigin: `${GCX}px 50%` });
+
+  const tl = gsap.timeline({ paused: true });
+  tl.addLabel("s0", 0);
+  // s0 -> s1: the city steps forward for the check (S14's veil lifts, the Auditor's islands are named again),
+  // the control and its gate
+  tl.to(h.veil, { autoAlpha: 0, duration: 1.0, ease: R.MOTION.light }, "s0");
+  tl.to(AUD.map((id) => h.labels.get(id)), { autoAlpha: 1, duration: 0.6, ease: "power1.inOut" }, "s0+=0.3");
+  rise(tl, t1, "s0");
+  rise(tl, t2, "s0+=0.12");
+  tl.to(gate, { autoAlpha: 1, scaleY: 1, duration: 0.9, ease: R.MOTION.lift }, "s0+=0.2");
+  tl.addLabel("s1");
+  // s1 -> s2: the diary lights, the gate sweeps, the 83 are marked as it reads them
+  tl.to(diary, { autoAlpha: 1, duration: 0.6, ease: R.MOTION.light }, "s1");
+  tl.to(rl, { autoAlpha: 0, duration: 0.4, ease: "power1.out" }, "s1");
+  tl.to(rl2, { autoAlpha: 1, duration: 0.4, ease: "power1.in" }, "s1+=0.05");
+  rise(tl, t3, "s1+=0.1");
+  const S = 0.85;                                                // the sweep starts here (s1 + S)
+  // the count arrives with the first mark (never a "0 apps ... skip the template" on screen)
+  rise(tl, count, `s1+=${(S + marks[0].at + 0.02).toFixed(3)}`);
+  tl.to(gate, { x: X1 - GCX, duration: SWEEP, ease: "none" }, `s1+=${S}`);
+  wakeKeys.forEach((k, i) => {
+    const wxc = wx0 + (k + 0.5) * BW, at = S + reach(wxc);
+    tl.to(wake[i], { autoAlpha: 1, duration: 0.1, ease: "power1.out" }, `s1+=${at.toFixed(3)}`);
+    tl.to(wake[i], { autoAlpha: 0, duration: 0.85, ease: "power2.in" }, `s1+=${(at + 0.12).toFixed(3)}`);
+  });
+  marks.forEach((m, i) => {
+    const at = S + m.at;
+    tl.to(m.dark, { autoAlpha: 1, duration: 0.25, ease: "power1.out" }, `s1+=${at.toFixed(3)}`);
+    tl.to(m.ring, { autoAlpha: 1, drawSVG: "100%", duration: 0.4, ease: R.MOTION.mark }, `s1+=${(at + 0.02).toFixed(3)}`);
+    tl.set(num, { innerText: i + 1 }, `s1+=${(at + 0.02).toFixed(3)}`);
+  });
+  tl.to(gate, { autoAlpha: 0, duration: 0.45, ease: "power1.in" }, `s1+=${(S + SWEEP - 0.3).toFixed(3)}`);
+  tl.to(diary, { autoAlpha: 0, duration: 0.8, ease: R.MOTION.light }, `s1+=${(S + SWEEP - 0.2).toFixed(3)}`);
+  tl.to(rl2, { autoAlpha: 0, duration: 0.6, ease: "power1.out" }, `s1+=${(S + SWEEP).toFixed(3)}`);
+  tl.to(rl, { autoAlpha: 1, duration: 0.6, ease: "power1.in" }, `s1+=${(S + SWEEP + 0.1).toFixed(3)}`);
+  tl.addLabel("s2");                                             // after the last wake has faded
+  // s2 -> s3: the list: everything else steps back, the 83 glow
+  tl.to(veil, { autoAlpha: 0.62, duration: 1.0, ease: R.MOTION.light }, "s2");
+  const aud = ["reloads", "sessions", "telemetry", "metadata"].map((id) => h.labels.get(id));
+  tl.to(aud, { autoAlpha: 0, duration: 0.6, ease: "power1.out" }, "s2");
+  tl.to(bloom, { autoAlpha: 1, duration: 1.0, ease: R.MOTION.light }, "s2+=0.3");   // the glow swells, then settles
+  // opacity only (compositor): an SVG ping per mark re-rasterised the whole marks layer every frame
+  tl.to(bloom, { autoAlpha: 0.8, duration: 0.5, ease: "power1.inOut" }, "s2+=1.3");
+  tl.addLabel("s3");
+
+  await document.querySelector("#icon").decode().catch(() => {});
+  Scene.init(tl, ["s0", "s1", "s2", "s3"]);
+})();
+</script>
+</body>
+</html>
